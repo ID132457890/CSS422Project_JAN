@@ -7,7 +7,7 @@
     ORG    $1000
 START:                  ; first instruction of program
 
-* Put program code here
+    MOVE.B      #$32, D0
 
     SIMHALT             ; halt simulator
 
