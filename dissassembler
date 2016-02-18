@@ -1,0 +1,59 @@
+*-----------------------------------------------------------
+* Title      :
+* Written by :
+* Date       :
+* Description:
+*-----------------------------------------------------------
+    ORG    $200
+START:                  ; first instruction of program
+
+    *Ask for input
+    MOVE.B      #4, D0
+    TRAP        #15
+    
+    *Move what has been typed in D1 to A3 (it's the address)
+    MOVEA.L      D1, A3
+    
+    *Move the opcode part to D0
+    MOVE.W      (A3), D0
+    *Increase the address by 2, since that part has been read
+    ADDA.W       #$2, A3
+    
+    *Do loop to check if the opcode corresponds to a specific keyword (move, movea, add, etc)
+    
+    *Let's say it's MOVE, then copy the string to A0
+    LEA         MOVEMESSAGE, A0
+
+    *Now move the number of bytes that are needed for source and destination to D1 and D2 (let's say 1 for source and 2 for destination)
+    MOVE.L      #$2, D1
+    MOVE.L      #$2, D2
+    
+    *Now copy the source to D3 and destination to D4
+    MOVE.W      (A3), D3
+    ADDA.W       D1, A3
+    
+    MOVE.W      (A3), D4
+    ADDA.W       D2, A3
+    
+    *Now check what source and destination are and move them to A1 and A2
+    MOVE.B      #15, D0
+    
+    MOVE.L      D3, D1
+    MOVE.B      #16, D2 *For trap 15 task 15, it's a base 16 number
+    
+    TRAP        #15 *Print the source
+    
+    MOVE.L      D4, D1
+    MOVE.B      #16, D2 *For trap 15 task 15, it's a base 16 number
+    
+    TRAP        #15 *Print the destination
+    
+    SIMHALT             ; halt simulator
+
+MOVEMESSAGE DC.B    'MOVE', 0
+
+    END    START        ; last line of source
+
+
+
+
