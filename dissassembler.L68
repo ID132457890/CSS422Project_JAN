@@ -1,0 +1,159 @@
+00000200 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.15.04
+Created On: 2/19/2016 12:34:17 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      :
+00000000                             3  * Written by :
+00000000                             4  * Date       :
+00000000                             5  * Description:
+00000000                             6  *-----------------------------------------------------------
+00000200                             7      ORG    $200
+00000200  =00007000                  8  stack EQU    $7000    *sp initial
+00000200  4FF8 7000                  9  START LEA stack,SP
+00000204                            10      
+00000204                            11      *Ask for input
+00000204  103C 0004                 12      MOVE.B      #4, D0
+00000208  4E4F                      13      TRAP        #15
+0000020A                            14      
+0000020A                            15      *Move what has been typed in D1 to A3 (it's the address)
+0000020A  2641                      16      MOVEA.L      D1, A3
+0000020C                            17      
+0000020C                            18      *Move the opcode part to D0
+0000020C  3013                      19  LOOP    MOVE.W      (A3), D0
+0000020E                            20      *Increase the address by 2, since that part has been read
+0000020E  544B                      21      ADDA.W       #$2, A3
+00000210                            22       
+00000210                            23      
+00000210  4EB9 00000226             24      JSR decode_opcode
+00000216                            25     
+00000216  4EB9 00000268             26      JSR decode_ea
+0000021C                            27      
+0000021C  4EB9 00000276             28      JSR print_assembly
+00000222  6000 0084                 29      BRA END
+00000226                            30      
+00000226                            31      
+00000226                            32  
+00000226                            33  
+00000226                            34  *******************************************************************   
+00000226                            35  *Subroturine decode_opcode()                                      *
+00000226                            36  *Description Decodes opcode word into unique id representing      *
+00000226                            37  *            opcode and puts it into D4                           *
+00000226                            38  *******************************************************************
+00000226                            39  decode_opcode  
+00000226  3200                      40           MOVE.W D0, D1 *Make a backup of the opcode word so it can be restored when more than one test is done on it
+00000228  0240 F000                 41           ANDI.W  #$F000,D0 *make last two chars 0
+0000022C  B07C 1000                 42           CMP.W #$1000, D0
+00000230  6700 0016                 43           BEQ MOVEB
+00000234                            44          
+00000234  B07C 3000                 45           CMP.W #$3000, D0
+00000238  6700 0018                 46           BEQ MOVEW
+0000023C                            47         
+0000023C  B07C 2000                 48           CMP.W #$2000, D0
+00000240  6700 001A                 49           BEQ MOVEL
+00000244                            50         
+00000244  6000 0020                 51           BRA BAD
+00000248                            52          
+00000248  7801                      53  MOVEB     MOVEQ #1, D4
+0000024A  43F9 00000292             54            LEA MOVEBMESSAGE, A1 
+00000250  4E75                      55            RTS       
+00000252  7801                      56  MOVEW    MOVEQ #1,D4
+00000254  43F9 00000299             57           LEA MOVEWMESSAGE, A1
+0000025A                            58  
+0000025A  4E75                      59           RTS      
+0000025C                            60                
+0000025C  7801                      61  MOVEL   MOVEQ #1,D4 
+0000025E  43F9 000002A0             62          LEA MOVELMESSAGE, A1
+00000264  4E75                      63             RTS    
+00000266                            64  
+00000266  4E75                      65  BAD        RTS
+00000268                            66  *******************************************************************
+00000268                            67  *End of decode_opcode()                                           *
+00000268                            68  *******************************************************************
+00000268                            69          
+00000268                            70                 
+00000268                            71  *******************************************************************
+00000268                            72  *Subroturine decode_ea                                            *
+00000268                            73  *Description: uses id in D4 to decode the number of words to read *
+00000268                            74  * puts the number of words to read for source and destination     *
+00000268                            75  *               into D1 and D2                                    *
+00000268                            76  *******************************************************************
+00000268                            77  decode_ea  
+00000268                            78  
+00000268                            79   *Now move the number of bytes that are needed for source and destination to D1 and D2 (let's say 1 for source and 2 for destination)
+00000268  7202                      80      MOVE.L      #$2, D1
+0000026A  7402                      81      MOVE.L      #$2, D2
+0000026C                            82      
+0000026C                            83     * THESE TWO LINES ARE PULLING FFFFF
+0000026C                            84      *Now copy the source to D3 and destination to D4
+0000026C  3613                      85      MOVE.W      (A3), D3
+0000026E  D6C1                      86      ADDA.W       D1, A3
+00000270                            87      
+00000270  3813                      88      MOVE.W      (A3), D4
+00000272  D6C2                      89      ADDA.W       D2, A3
+00000274  4E75                      90          RTS       
+00000276                            91  *******************************************************************
+00000276                            92  *  End of decode_ea                                               *
+00000276                            93  *******************************************************************  
+00000276                            94  
+00000276                            95      
+00000276                            96  *******************************************************************
+00000276                            97  *Subroturine print_assembly                                       *
+00000276                            98  *Description:                                                     *
+00000276                            99  *                                                                 *
+00000276                           100  *                                                                 *
+00000276                           101  *******************************************************************
+00000276                           102  print_assembly 
+00000276  103C 000E                103      MOVE.B  #14,D0    
+0000027A  4E4F                     104      TRAP #15      
+0000027C                           105      *Now check what source and destination are and move them to A1 and A2
+0000027C  103C 000F                106      MOVE.B      #15, D0
+00000280                           107      
+00000280  2203                     108      MOVE.L      D3, D1
+00000282  143C 0010                109      MOVE.B      #16, D2 *For trap 15 task 15, it's a base 16 number
+00000286                           110      
+00000286  4E4F                     111      TRAP        #15 *Print the source
+00000288                           112      
+00000288  2204                     113      MOVE.L      D4, D1
+0000028A  143C 0010                114      MOVE.B      #16, D2 *For trap 15 task 15, it's a base 16 number
+0000028E                           115      
+0000028E  4E4F                     116      TRAP        #15 *Print the destination  
+00000290  4E75                     117          RTS       
+00000292                           118  *******************************************************************
+00000292                           119  *  End of print_assembly                                          *
+00000292                           120  *******************************************************************  
+00000292                           121      
+00000292                           122      
+00000292                           123      
+00000292                           124     
+00000292                           125    
+00000292                           126  
+00000292= 4D 4F 56 45 2E 42 00     127  MOVEBMESSAGE DC.B 'MOVE.B',0
+00000299                           128  
+00000299                           129  
+00000299= 4D 4F 56 45 2E 57 00     130  MOVEWMESSAGE DC.B 'MOVE.W',0    
+000002A0= 4D 4F 56 45 2E 4C 00     131  MOVELMESSAGE DC.B 'MOVE.L',0
+000002A8  FFFF FFFF                132  END    SIMHALT    
+000002AC                           133      END    START       last line of source
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+BAD                 266
+DECODE_EA           268
+DECODE_OPCODE       226
+END                 2A8
+LOOP                20C
+MOVEB               248
+MOVEBMESSAGE        292
+MOVEL               25C
+MOVELMESSAGE        2A0
+MOVEW               252
+MOVEWMESSAGE        299
+PRINT_ASSEMBLY      276
+STACK               7000
+START               200
