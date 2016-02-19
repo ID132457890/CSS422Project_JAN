@@ -1,6 +1,6 @@
 00000200 Starting Address
 Assembler used: EASy68K Editor/Assembler v5.15.04
-Created On: 2/19/2016 12:34:17 PM
+Created On: 2/19/2016 1:47:28 PM
 
 00000000                             1  *-----------------------------------------------------------
 00000000                             2  * Title      :
@@ -79,7 +79,7 @@ Created On: 2/19/2016 12:34:17 PM
 00000268                            75  *               into D1 and D2                                    *
 00000268                            76  *******************************************************************
 00000268                            77  decode_ea  
-00000268                            78  
+00000268                            78          
 00000268                            79   *Now move the number of bytes that are needed for source and destination to D1 and D2 (let's say 1 for source and 2 for destination)
 00000268  7202                      80      MOVE.L      #$2, D1
 0000026A  7402                      81      MOVE.L      #$2, D2
