@@ -74,8 +74,10 @@ BAD        RTS
 * puts the number of words to read for source and destination     *
 *               into D1 and D2                                    *
 *******************************************************************
-decode_ea  
-
+decode_ea  
+    
+    MOVE.W      D1,D0 *Make a copy of the OpCode Word and placing it into D0.
+    ANDI.W      #$0FFF,D1 *This masks D1 so that you turn the left most 1 into the 0.       
  *Now move the number of bytes that are needed for source and destination to D1 and D2 (let's say 1 for source and 2 for destination)
     MOVE.L      #$2, D1
     MOVE.L      #$2, D2
@@ -131,6 +133,7 @@ MOVEWMESSAGE DC.B 'MOVE.W',0
 MOVELMESSAGE DC.B 'MOVE.L',0
 END    SIMHALT    
     END    START       last line of source
+
 
 
 
