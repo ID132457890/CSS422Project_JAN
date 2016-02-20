@@ -27,6 +27,7 @@ START:                  ; first instruction of program
     JSR         CHECK1100
     JSR         CHECK0000   *Check for 0000 (or 00 for MOVE) initial
 
+*-------------------IGNORE THIS PART FOR NOW------------------------------------
     *Now move the number of bytes that are needed for source and destination to D1 and D2 (let's say 1 for source and 2 for destination)
     MOVE.L      #$2, D1
     MOVE.L      #$2, D2
@@ -51,7 +52,7 @@ START:                  ; first instruction of program
     MOVE.L      D4, D1
     
     TRAP        #15 *Print the destination
-    
+  *------------------------------------------------------------  
     SIMHALT             ; halt simulator
 
 *----------------------------------------------------------------------------------------------------
