@@ -26,6 +26,13 @@ START:                  ; first instruction of program
     *Do check for 1100 initial
     JSR         CHECK1100
     JSR         CHECK0000   *Check for 0000 (or 00 for MOVE) initial
+    JSR         CHECK1011  * Check for the CMP opcode
+    JSR         CHECK0110 *Check for BCC opcode
+    JSR         CHECK0111 *Check for MOVEQ opcode
+    JSR         CHECK1101 *Check for ADD or ADDA
+    JSR         CHECK1001 *Check for sub or suba
+    JSR         CHECK1000 *Check for DIVS word
+    JSR         CHECK0100 *Check for JSR,RTS,NOP,MOVEM,LEA,CLR
 
 *-------------------IGNORE THIS PART FOR NOW------------------------------------
     *Now move the number of bytes that are needed for source and destination to D1 and D2 (let's say 1 for source and 2 for destination)
@@ -118,13 +125,169 @@ OPANDI          LEA     ANDIMESSAGE, A1 *Store the ANDI message
 
 *-----------------------------------------------------------------------------------------------------
 
-ANDMESSAGE DC.B     'AND', 0
-MULSMESSAGE DC.B    'MULS', 0
 
-MOVEMESSAGE DC.B    'MOVE', 0
-BCHGMESSAGE DC.B    'BCHG', 0
-CMPIMESSAGE DC.B    'CMPI', 0
-ADDIMESSAGE DC.B    'ADDI', 0
-ANDIMESSAGE DC.B    'ANDI', 0
+*-----------------------------------------------------------------------------------------------------
+CHECK1011       MOVE.W D0,D1 *restore the opcode to d1
+                AND.W #$F000,D1
+                CMP.W #$C000,D1
+                BEQ OPCMP
+                RTS
+OPCMP           LEA CMPMESSAGE, A1
+                RTS
+*-----------------------------------------------------------------------------------------------------
 
+*-----------------------------------------------------------------------------------------------------
+CHECK0111       *Check for MOVEQ opcode
+                MOVE.W D0,D1 *restore the opcode to d1
+                AND.W #$F000,D1
+                CMP.W #$7000,D1
+                BEQ OPMOVEQ
+                RTS
+OPMOVEQ         LEA MOVEQMESSAGE, A1
+                RTS
+
+*-----------------------------------------------------------------------------------------------------
+
+*-----------------------------------------------------------------------------------------------------
+CHECK0110       *Check for BCC opcode
+                MOVE.W D0,D1 *restore the opcode to d1
+                AND.W #$F000,D1
+                CMP.W #$6000,D1
+                BEQ OPBCC
+                RTS
+OPBCC           LEA BCCMESSAGE, A1
+                RTS
+*-----------------------------------------------------------------------------------------------------
+
+*-----------------------------------------------------------------------------------------------------
+CHECK1101       *Check for ADD or ADDA
+                MOVE.W D0,D1 *restore the opcode to d1
+                AND.W #$F000,D1
+                CMP.W #$D000, D1
+                BEQ CHECKADDADDA
+                RTS
+CHECKADDADDA    AND.W #$1C0, D1
+                CMP.W #$1C0, D1
+                BEQ OPADDA
+            
+                MOVE.W D0,D1 *restore the opcode to d1          
+                AND.W #$C0,D1  *check for 011 in 8-6.
+                CMP.W #$C0,D1 
+                BEQ OPADDA
+                BRA OPADD
+OPADDA          LEA ADDAMESSAGE,A1
+                RTS
+OPADD           LEA ADDMESSAGE,A1
+                RTS
+*-----------------------------------------------------------------------------------------------------
+
+*-----------------------------------------------------------------------------------------------------
+CHECK1001       *Check for sub or suba
+
+                MOVE.W D0,D1 *restore the opcode to d1
+                AND.W #$F000,D1
+                CMP.W #$9000, D1
+                BEQ CHECKSUBSUBA
+                RTS
+CHECKSUBSUBA    AND.W #$1C0, D1
+                CMP.W #$1C0, D1
+                BEQ OPSUBA
+            
+                MOVE.W D0,D1 *restore the opcode to d1          
+                AND.W #$C0,D1  *check for 011 in 8-6.
+                CMP.W #$C0,D1 
+                BEQ OPSUBA
+                BRA OPSUB
+OPSUBA          LEA SUBAMESSAGE,A1
+                RTS
+OPSUB           LEA SUBMESSAGE,A1
+                RTS
+*-----------------------------------------------------------------------------------------------------
+
+*-----------------------------------------------------------------------------------------------------
+CHECK1000       *Check for DIVS word
+                MOVE.W D0,D1 *restore the opcode to d1
+                AND.W #$F000,D1
+                CMP.W #$6000,D1
+                BEQ OPBCC
+                RTS
+OPDIVS          LEA DIVSMESSAGE,A1
+                RTS
+*-----------------------------------------------------------------------------------------------------
+
+*-----------------------------------------------------------------------------------------------------
+CHECK0100   * check for JSR, RTS, NOP, MOVEM, LEA, CLEAR
+                MOVE.W D0,D1 *RESTORE OPCODE
+                AND.W #$F000,D1
+                CMP.W #$4000,D1
+                BEQ CHECKOPS *check all posible ops in the 0100 category
+                RTS
+
+CHECKOPS        MOVE.W D0,D1 * restore opcode
+                *******Check for lea*******
+                MOVE.W D0,D1 *RESTORE OPCODE
+                AND.W #$100,D1  *mask every bit but the 8th
+                CMP.W #$100, D1 *check if bit 8 is 1 
+                BEQ OPLEA
+                ******check for CLR********
+       
+                ******check for MOVEM*****
+                MOVE.W D0,D1 *RESTORE OPCODE
+                AND.W #$200,D1  *mask every bit but the 8th
+                CMP.W #$200, D1 *check if bit 8 is 1 
+                BEQ OPMOVEM
+    
+                MOVE.W D0,D1 *restore opcode
+                AND.W #$300,D1 *check if th 9 is 1 and 8 is 1
+                CMP.W #$300,D1
+                BEQ CHECKRTSNOPJSR *check the remaing op codes
+                RTS
+CHECKRTSNOPJSR  MOVE.W D0,D1 *restore opcode
+                AND.W #$30,D1 *check if 5,4,3 is 011 
+                CMP.W #$30,D1
+                BEQ CHECKRTSNOP
+                BRA OPJSR
+CHECKRTSNOP
+                MOVE.W D0,D1 *restore opcode
+                AND.W #$4,D1 *check if 2 bit is 1
+                CMP.W #$4,D1 *if eqal then it is rts
+                BEQ OPRTS
+                BRA OPNOP *We know at this point it is 110 and not 1 so it has to be 1100
+OPNOP           LEA NOPMESSAGE,A1
+                RTS    
+OPJSR
+                LEA RTSMESSAGE,A1
+                RTS
+OPLEA  
+                LEA LEAMESSAGE,A1
+                RTS
+OPMOVEM         LEA OPMOVEMMESSAGE,A1
+OPRTS           LEA RTSMESSAGE,A1
+                RTS
+*-----------------------------------------------------------------------------------------------------
+DIVSMESSAGE     DC.B    'DIVS', 0
+CMPMESSAGE      DC.B     'CMP', 0
+BCCMESSAGE      DC.B     'BCC', 0
+MOVEQMESSAGE    DC.B   'MOVEQ', 0
+ADDAMESSAGE     DC.B    'ADDA', 0
+ADDMESSAGE      DC.B     'ADD', 0
+SUBAMESSAGE     DC.B    'SUBA', 0
+SUBMESSAGE      DC.B     'SUB', 0
+ANDMESSAGE      DC.B     'AND', 0
+MULSMESSAGE     DC.B    'MULS', 0
+MOVEMESSAGE     DC.B    'MOVE', 0
+BCHGMESSAGE     DC.B    'BCHG', 0
+CMPIMESSAGE     DC.B    'CMPI', 0
+ADDIMESSAGE     DC.B    'ADDI', 0
+ANDIMESSAGE     DC.B    'ANDI', 0
+LEAMESSAGE      DC.B    'LEA',0
+OPMOVEMMESSAGE  DC.B    'MOVEM',0
+RTSMESSAGE      DC.B    'RTS',0
+NOPMESSAGE      DC.B    'NOP',0
     END    START        ; last line of source
+    
+
+*~Font name~Courier New~
+*~Font size~10~
+*~Tab type~1~
+*~Tab size~4~
