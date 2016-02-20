@@ -4,144 +4,126 @@
 * Date       :
 * Description:
 *-----------------------------------------------------------
-    ORG    $200
-stack EQU    $7000    *sp initial
-START LEA stack,SP
-    
+    ORG    $1000
+START:                  ; first instruction of program
+
     *Ask for input
     MOVE.B      #4, D0
     TRAP        #15
     
-    *Move what has been typed in D1 to A3 (it's the address)
-    MOVEA.L      D1, A3
+    *Move what has been typed in D1 to A0 (it's the address)
+    MOVEA.L      D1, A0
     
-    *Move the opcode part to D0
-LOOP    MOVE.W      (A3), D0
+    *Copy the opcode part to D0
+    MOVE.W      (A0), D0
+    
+    *Copy the opcode to D1 for changes
+    MOVE.W      (A0), D1
+    
     *Increase the address by 2, since that part has been read
-    ADDA.W       #$2, A3
-     
+    ADDA.W       #$2, A0
     
-    JSR decode_opcode
-   
-    JSR decode_ea
-    
-    JSR print_assembly
-    BRA END
-    
-    
+    *Do check for 1100 initial
+    JSR         CHECK1100
+    JSR         CHECK0000   *Check for 0000 (or 00 for MOVE) initial
 
-
-*******************************************************************   
-*Subroturine decode_opcode()                                      *
-*Description Decodes opcode word into unique id representing      *
-*            opcode and puts it into D4                           *
-*******************************************************************
-decode_opcode  
-         MOVE.W D0, D1 *Make a backup of the opcode word so it can be restored when more than one test is done on it
-         ANDI.W  #$F000,D0 *make last two chars 0
-         CMP.W #$1000, D0
-         BEQ MOVEB
-        
-         CMP.W #$3000, D0
-         BEQ MOVEW
-       
-         CMP.W #$2000, D0
-         BEQ MOVEL
-       
-         BRA BAD
-        
-MOVEB     MOVEQ #1, D4
-          LEA MOVEBMESSAGE, A1 
-          RTS       
-MOVEW    MOVEQ #1,D4
-         LEA MOVEWMESSAGE, A1
-
-         RTS      
-              
-MOVEL   MOVEQ #1,D4 
-        LEA MOVELMESSAGE, A1
-           RTS    
-
-BAD        RTS
-*******************************************************************
-*End of decode_opcode()                                           *
-*******************************************************************
-        
-               
-*******************************************************************
-*Subroturine decode_ea                                            *
-*Description: uses id in D4 to decode the number of words to read *
-* puts the number of words to read for source and destination     *
-*               into D1 and D2                                    *
-*******************************************************************
-decode_ea  
-    
-    MOVE.W      D1,D0 *Make a copy of the OpCode Word and placing it into D0.
-    ANDI.W      #$0FFF,D1 *This masks D1 so that you turn the left most 1 into the 0.       
- *Now move the number of bytes that are needed for source and destination to D1 and D2 (let's say 1 for source and 2 for destination)
+    *Now move the number of bytes that are needed for source and destination to D1 and D2 (let's say 1 for source and 2 for destination)
     MOVE.L      #$2, D1
     MOVE.L      #$2, D2
     
-   * THESE TWO LINES ARE PULLING FFFFF
     *Now copy the source to D3 and destination to D4
     MOVE.W      (A3), D3
     ADDA.W       D1, A3
     
     MOVE.W      (A3), D4
     ADDA.W       D2, A3
-        RTS       
-*******************************************************************
-*  End of decode_ea                                               *
-*******************************************************************  
-
     
-*******************************************************************
-*Subroturine print_assembly                                       *
-*Description:                                                     *
-*                                                                 *
-*                                                                 *
-*******************************************************************
-print_assembly 
-    MOVE.B  #14,D0    
-    TRAP #15      
-    *Now check what source and destination are and move them to A1 and A2
-    MOVE.B      #15, D0
+    *Now check what source and destination are and move them to A2 and A3
+    MOVE.B      #14, D0
+    TRAP        #15 
+    
+    MOVE.B      #6, D0
     
     MOVE.L      D3, D1
-    MOVE.B      #16, D2 *For trap 15 task 15, it's a base 16 number
     
     TRAP        #15 *Print the source
     
     MOVE.L      D4, D1
-    MOVE.B      #16, D2 *For trap 15 task 15, it's a base 16 number
     
-    TRAP        #15 *Print the destination  
-        RTS       
-*******************************************************************
-*  End of print_assembly                                          *
-*******************************************************************  
+    TRAP        #15 *Print the destination
     
-    
-    
-   
-  
+    SIMHALT             ; halt simulator
 
-MOVEBMESSAGE DC.B 'MOVE.B',0
+*----------------------------------------------------------------------------------------------------
+CHECK1100       AND.W   #$F000, D1      *Isolates the first 4 spaces
+                CMP.W   #$C000, D1      *Checks if the first 4 spaces are 1100
+                
+                BEQ     CHECKANDMULS    *If equal, then go check if it's AND or MULS
+                
+                RTS
+            
+CHECKANDMULS    MOVE.W  D0, D1          *Move the original opcode to D1 since we need original
+                AND.W   #$1C0, D1       *Isolate spaces 8 to 6
+                CMP.W   #$1C0, D1       *Check if spaces 8 to 6 are 111
+                
+                BEQ     OPMULS          *If yes, then it's AND
+                
+                BRA     OPAND           *If not, then it's MULS
 
+OPAND           LEA     ANDMESSAGE, A1  *Store the AND message
+                MOVE.B  #14, D0
+                TRAP    #15
+OPMULS          LEA     MULSMESSAGE, A1 *Store the MULS message
 
-MOVEWMESSAGE DC.B 'MOVE.W',0    
-MOVELMESSAGE DC.B 'MOVE.L',0
-END    SIMHALT    
-    END    START       last line of source
+*-----------------------------------------------------------------------------------------------------
 
+CHECK0000       AND.W   #$F000, D1      *Isolates the first 4 spaces
+                CMP.W   #$0000, D1      *Checks if the first 4 spaces are 0000
+                
+                BEQ     CHECKAABC       *If equal, then go check if it's ANDI, ADDI, BCHG and CMPI
+                
+                AND.W   #$C000, D1      *Isolate the first 2 spaces
+                CMP.W   #$0000, D1      *Check if the first 2 spaces are 00
+                
+                BEQ     OPMOVE          *If true, it's MOVE
+                
+                RTS
+            
+CHECKAABC       MOVE.W  D0, D1          *Move the original opcode to D1 since we need original
+                AND.W   #$100, D1       *Isolate space 8
+                CMP.W   #$100, D1       *Check if space 8 is 1
+                
+                BEQ     OPBCHG          *If yes, then it's BCHG
+                
+                MOVE.W  D0, D1          *Move the original opcode to D1 since we need original
+                AND.W   #$800, D1       *Isolate space 11
+                CMP.W   #$800, D1       *Check if space 11 is 1
+                
+                BEQ     OPCMPI          *If yes, then it's CMPI
+                
+                MOVE.W  D0, D1          *Move the original opcode to D1 since we need original
+                AND.W   #$400, D1       *Isolate space 10
+                CMP.W   #$400, D1       *Check if space 10 is 1
+                
+                BEQ     OPADDI          *If true, then it's ADDI
+                
+                BRA     OPANDI          *If not, then it's ANDI
 
+OPMOVE          LEA     MOVEMESSAGE, A1 *Store the MOVE message
+OPBCHG          LEA     BCHGMESSAGE, A1 *Store the BCHG message
+OPCMPI          LEA     CMPIMESSAGE, A1 *Store the CMPI message
+OPADDI          LEA     ADDIMESSAGE, A1 *Store the ADDI message
+OPANDI          LEA     ANDIMESSAGE, A1 *Store the ANDI message
 
+*-----------------------------------------------------------------------------------------------------
 
+ANDMESSAGE DC.B     'AND', 0
+MULSMESSAGE DC.B    'MULS', 0
 
+MOVEMESSAGE DC.B    'MOVE', 0
+BCHGMESSAGE DC.B    'BCHG', 0
+CMPIMESSAGE DC.B    'CMPI', 0
+ADDIMESSAGE DC.B    'ADDI', 0
+ANDIMESSAGE DC.B    'ANDI', 0
 
-
-
-*~Font name~Courier New~
-*~Font size~10~
-*~Tab type~1~
-*~Tab size~4~
+    END    START        ; last line of source
