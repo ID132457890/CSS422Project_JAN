@@ -117,11 +117,17 @@ CHECKAABC       MOVE.W  D0, D1          *Move the original opcode to D1 since we
                 
                 BRA     OPANDI          *If not, then it's ANDI
 
-OPMOVE          LEA     MOVEMESSAGE, A1 *Store the MOVE message
+OPMOVE          LEA     MOVEMESSAGE, A1 *Store the MOVE message
+                RTS
+
 OPBCHG          LEA     BCHGMESSAGE, A1 *Store the BCHG message
+                RTS
 OPCMPI          LEA     CMPIMESSAGE, A1 *Store the CMPI message
+                RTS
 OPADDI          LEA     ADDIMESSAGE, A1 *Store the ADDI message
+                RTS
 OPANDI          LEA     ANDIMESSAGE, A1 *Store the ANDI message
+                RTS
 
 *-----------------------------------------------------------------------------------------------------
 
@@ -286,6 +292,7 @@ RTSMESSAGE      DC.B    'RTS',0
 NOPMESSAGE      DC.B    'NOP',0
     END    START        ; last line of source
     
+
 
 *~Font name~Courier New~
 *~Font size~10~
