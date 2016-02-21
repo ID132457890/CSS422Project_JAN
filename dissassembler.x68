@@ -117,7 +117,8 @@ CHECKAABC       MOVE.W  D0, D1          *Move the original opcode to D1 since we
                 
                 BRA     OPANDI          *If not, then it's ANDI
 
-OPMOVE          LEA     MOVEMESSAGE, A1 *Store the MOVE message
+OPMOVE          LEA     MOVEMESSAGE, A1 *Store the MOVE message
+
                 RTS
 
 OPBCHG          LEA     BCHGMESSAGE, A1 *Store the BCHG message
@@ -222,6 +223,7 @@ OPDIVS          LEA DIVSMESSAGE,A1
 *-----------------------------------------------------------------------------------------------------
 
 *-----------------------------------------------------------------------------------------------------
+
 CHECK0100   * check for JSR, RTS, NOP, MOVEM, LEA, CLEAR
                 MOVE.W D0,D1 *RESTORE OPCODE
                 AND.W #$F000,D1
@@ -229,9 +231,16 @@ CHECK0100   * check for JSR, RTS, NOP, MOVEM, LEA, CLEAR
                 BEQ CHECKOPS *check all posible ops in the 0100 category
                 RTS
 
-CHECKOPS        MOVE.W D0,D1 * restore opcode
-                *******Check for lea*******
-                MOVE.W D0,D1 *RESTORE OPCODE
+CHECKOPS        *******Check for NOP and RTS since they are constant
+                 MOVE.W D0,D1 *RESTORE OPCODE
+                 CMP #$4E75,D1
+                 BEQ OPRTS
+                 CMP #$4E71,D1
+                 BEQ OPNOP
+
+              
+                
+                *******Check for lea*******                
                 AND.W #$100,D1  *mask every bit but the 8th
                 CMP.W #$100, D1 *check if bit 8 is 1 
                 BEQ OPLEA
@@ -239,35 +248,30 @@ CHECKOPS        MOVE.W D0,D1 * restore opcode
        
                 ******check for MOVEM*****
                 MOVE.W D0,D1 *RESTORE OPCODE
-                AND.W #$200,D1  *mask every bit but the 8th
-                CMP.W #$200, D1 *check if bit 8 is 1 
+                AND.W #$0100,D1  *mask every bit but the 8th
+                CMP.W #$0100, D1 *check if bit 8 is 1 
                 BEQ OPMOVEM
     
                 MOVE.W D0,D1 *restore opcode
-                AND.W #$300,D1 *check if th 9 is 1 and 8 is 1
-                CMP.W #$300,D1
-                BEQ CHECKRTSNOPJSR *check the remaing op codes
+                AND.W #$200,D1 *check if th 9 is 1 and 8 is 1
+                CMP.W #$200,D1
+                BEQ CHECKJSR *check the remaing op codes
                 RTS
-CHECKRTSNOPJSR  MOVE.W D0,D1 *restore opcode
+CHECKJSR  MOVE.W D0,D1 *restore opcode
                 AND.W #$30,D1 *check if 5,4,3 is 011 
                 CMP.W #$30,D1
-                BEQ CHECKRTSNOP
                 BRA OPJSR
-CHECKRTSNOP
-                MOVE.W D0,D1 *restore opcode
-                AND.W #$4,D1 *check if 2 bit is 1
-                CMP.W #$4,D1 *if eqal then it is rts
-                BEQ OPRTS
-                BRA OPNOP *We know at this point it is 110 and not 1 so it has to be 1100
+          
 OPNOP           LEA NOPMESSAGE,A1
                 RTS    
 OPJSR
-                LEA RTSMESSAGE,A1
+                LEA JSRMESSAGE,A1
                 RTS
 OPLEA  
                 LEA LEAMESSAGE,A1
                 RTS
 OPMOVEM         LEA OPMOVEMMESSAGE,A1
+                RTS
 OPRTS           LEA RTSMESSAGE,A1
                 RTS
 *-----------------------------------------------------------------------------------------------------
@@ -290,8 +294,14 @@ LEAMESSAGE      DC.B    'LEA',0
 OPMOVEMMESSAGE  DC.B    'MOVEM',0
 RTSMESSAGE      DC.B    'RTS',0
 NOPMESSAGE      DC.B    'NOP',0
+JSRMESSAGE      DC.B    'JSR',0
     END    START        ; last line of source
     
+
+
+
+
+
 
 
 *~Font name~Courier New~
