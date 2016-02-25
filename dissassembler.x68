@@ -40,41 +40,6 @@ LOOP
     TRAP    #15
     SIMHALT   
 *------------------------------------main----------------------------------------
-
-
-
-
-*-------------------IGNORE THIS PART FOR NOW------------------------------------
-    *Now move the number of bytes that are needed for source and destination to D1 and D2 (let's say 1 for source and 2 for destination)
-    MOVE.L      #$2, D1
-    MOVE.L      #$2, D2
-    
-    *Now copy the source to D3 and destination to D4
-    MOVE.W      (A3), D3
-    ADDA.W       D1, A3
-    
-    MOVE.W      (A3), D4
-    ADDA.W       D2, A3
-    
-    *Now check what source and destination are and move them to A2 and A3
-    MOVE.B      #14, D0
-    TRAP        #15 
-    
-    MOVE.B      #6, D0
-    
-    MOVE.L      D3, D1
-    
-    TRAP        #15 *Print the source
-    
-    MOVE.L      D4, D1
-    
-    TRAP        #15 *Print the destination
-
-    LEA NEWLINE,A1
-    TRAP #15
-
-     SIMHALT             ; halt simulator
-  *--------------------IGNORRE THIS PART FOR NOW----------------------------------------  
     
    
 
@@ -98,9 +63,11 @@ CHECKANDMULS    MOVE.W  D0, D1          *Move the original opcode to D1 since we
                     
                 BRA     OPAND          *If not, then it's AND
 OPAND           LEA     ANDMESSAGE, A1  *Store the AND message
-                
+                MOVE.B  #$13, D4
                 RTS
+                
 OPMULS          LEA     MULSMESSAGE, A1 *Store the MULS message
+                MOVE.B  #$9, D4
                 RTS
 *---------------------------------------------END_CHECK1100-----------------------------------------------------
 
@@ -145,16 +112,23 @@ CHECKAABC       MOVE.W  D0, D1          *Move the original opcode to D1 since we
                 BRA     OPANDI          *If not, then it's ANDI
 
 OPMOVE          LEA     MOVEMESSAGE, A1 *Store the MOVE message
-
+                MOVE.B  #$1, D4
                 RTS
 
 OPBCHG          LEA     BCHGMESSAGE, A1 *Store the BCHG message
+                MOVE.B  #$18, D4
                 RTS
+                
 OPCMPI          LEA     CMPIMESSAGE, A1 *Store the CMPI message
+                MOVE.B  #$20, D4
                 RTS
+                
 OPADDI          LEA     ADDIMESSAGE, A1 *Store the ADDI message
+                MOVE.B  #$6, D4
                 RTS
+                
 OPANDI          LEA     ANDIMESSAGE, A1 *Store the ANDI message
+                MOVE.B  #$14, D4
                 RTS
 
 *---------------------------------------END_CHECK0000--------------------------------------------------------
@@ -163,95 +137,142 @@ OPANDI          LEA     ANDIMESSAGE, A1 *Store the ANDI message
 *                                            Subroutine: CHECK1110
 *Description: Checks if opcode word starts with the binary 1110. If true it identifies if it is LSR/LSL,ASR/ASL,ROR/ROL
 *----------------------------------------------------------------------------------------------------
-CHECK1110        MOVE.W D0,D1    *restore opcode
-                 AND.W #$F000,D1
-                 CMP.W #$E000,D1
-                 BEQ CHECKSHIFTOPS
-                 RTS
-CHECKSHIFTOPS      *check if the opcode is LSx,ASx,ROx
-                JSR ROTATION
-                MOVE.W D0,D1 *restore opcode   
-                AND.W #$C0,D1
-                CMP.W #$C0,D1
-                BEQ MEMSHIFT *if 1 in 7 and 1 in 6 this is a memory shift
-                BRA REGSHIFT
-MEMSHIFT        MOVE.W D0,D1 *restore opcode   
-                AND.W #$200,D1 *check if opcode is lsr or lsl
-                CMP.W #$200,D1
-                BEQ CHECKLSX
+CHECK1110       AND.W   #$F000, D1      *Isolates the first 4 spaces
+                CMP.W   #$E000, D1      *Checks if the first 4 spaces are 1110
                 
-                MOVE.W D0,D1 *restore opcode
-                AND.W #$18,D1
-                CMP.W #$18, D1
-                BEQ CHECKROX *Opcode is ROR or ROL if 
-                BRA CHECKASX
-
-          
-REGSHIFT        
-                MOVE.W D0,D1 *restore opcode   
-                AND.W #$8,D1 *check if opcode is lsr or lsl
-                CMP.W #$8,D1
-                BEQ CHECKLSX
+                BEQ     CHECKLAR        *If true, then it's LSR, ASR or ROR (and left versions)
                 
+                RTS
                 
-                MOVE.W D0,D1 *restore opcode
-                AND.W #$18,D1
-                CMP.W #$18, D1
-                BEQ CHECKROX *Opcode is ROR or ROL if 
-                BRA CHECKASX
+CHECKLAR        MOVE.W  D0, D1          *Move the original opcode to D1 since we need original
+                AND.W   #$C0, D1        *Isolate spaces 7-6
+                CMP.W   #$C0, D1        *Check if spaces 7-6 are 11
+                
+                BEQ     CHECKLARM       *If true, then it's LSR, ASR or ROR (memory shift)
+                
+                BRA     CHECKLARR       *If not, then it's LRS, ASR or ROR (register shift)
+                
+CHECKLARM       MOVE.W  D0, D1          *Move the original opcode to D1 since we need original
+                AND.W   #$600, D1       *Isolate spaces 10-9
+                CMP.W   #$200, D1       *Check if spaces 10-9 are 01
+                
+                BEQ     CHECKLSM        *If true, it's LS (memory)
+                
+                CMP.W   #$0000, D1      *Check if spaces 10-9 are 00
+                
+                BEQ     CHECKASM        *If true, it's AS (memory)
+                
+                CMP.W   #$600, D1       *Check if spaces 10-9 are 11
+                
+                BEQ     CHECKROM        *If true, it's RO (memory)
+                
+CHECKLARR       MOVE.W  D0, D1          *Move the original opcode to D1 since we need original
+                AND.W   #$18, D1        *Isolate spaces 4-3
+                CMP.W   #$8, D1         *Check if spaces 4-3 are 01
+                
+                BEQ     CHECKLSRE       *If true, it's LS (register)
+                
+                CMP.W   #$0000, D1      *Check if spaces 4-3 are 00
+                
+                BEQ     CHECKASRE       *If true, it's AS (register)
+                
+                CMP.W   #$18, D1        *Check if spaces 4-3 are 11
+                
+                BEQ     CHECKRORE       *If true, it's RO (register)
+                
+CHECKLSM        MOVE.W  D0, D1          *Move the original opcode to D1 since we need original
+                AND.W   #$100, D1       *Isolate space 8 
+                CMP.W   #$100, D1       *Check if space 8 is 1
+                
+                BEQ     OPLSLM          *If true, it's LSL (memory)
+                
+                BRA     OPLSRM          *If not, it's LSR (memory)
+                
+CHECKASM        MOVE.W  D0, D1          *Move the original opcode to D1 since we need original
+                AND.W   #$100, D1       *Isolate space 8 
+                CMP.W   #$100, D1       *Check if space 8 is 1
+                
+                BEQ     OPASLM          *If true, it's ASL (memory)
+                
+                BRA     OPASRM          *If not, it's ASR (memory)
+                
+CHECKROM        MOVE.W  D0, D1          *Move the original opcode to D1 since we need original
+                AND.W   #$100, D1       *Isolate space 8 
+                CMP.W   #$100, D1       *Check if space 8 is 1
+                
+                BEQ     OPROLM          *If true, it's ROL (memory)
+                
+                BRA     OPRORM          *If not, it's ROR (memory)
+                
+CHECKLSRE       MOVE.W  D0, D1          *Move the original opcode to D1 since we need original
+                AND.W   #$100, D1       *Isolate space 8 
+                CMP.W   #$100, D1       *Check if space 8 is 1
+                
+                BEQ     OPLSLR          *If true, it's LSL (register)
+                
+                BRA     OPLSRR          *If not, it's LSR (register)
+                
+CHECKASRE       MOVE.W  D0, D1          *Move the original opcode to D1 since we need original
+                AND.W   #$100, D1       *Isolate space 8 
+                CMP.W   #$100, D1       *Check if space 8 is 1
+                
+                BEQ     OPASLR          *If true, it's ASL (register)
+                
+                BRA     OPASRR          *If not, it's ASR (register)
+                
+CHECKRORE       MOVE.W  D0, D1          *Move the original opcode to D1 since we need original
+                AND.W   #$100, D1       *Isolate space 8 
+                CMP.W   #$100, D1       *Check if space 8 is 1
+                
+                BEQ     OPROLR          *If true, it's ROL (register)
+                
+                BRA     OPRORR          *If not, it's ROR (register)
+                
+OPLSLM          LEA     LSLMESSAGE, A1 *Store the LSL (memory) message
+                MOVE.B  #$15, D4
+                RTS
+                
+OPLSLR          LEA     LSLMESSAGE, A1 *Store the LSL (register) message
+                MOVE.B  #$15, D4
+                RTS
+                
+OPLSRM          LEA     LSRMESSAGE, A1 *Store the LSR (memory) message
+                MOVE.B  #$15, D4
+                RTS
+                
+OPLSRR          LEA     LSRMESSAGE, A1 *Store the LSR (register) message
+                MOVE.B  #$15, D4
+                RTS
 
+OPASLM          LEA     ASLMESSAGE, A1 *Store the ASL (memory) message
+                MOVE.B  #$16, D4
+                RTS
 
+OPASLR          LEA     ASLMESSAGE, A1 *Store the ASL (register) message
+                MOVE.B  #$16, D4
+                RTS
 
+OPASRM          LEA     ASRMESSAGE, A1 *Store the ASR (memory) message
+                MOVE.B  #$16, D4
+                RTS
 
-CHECKLSX
-            CMP.B #01,D7
-            BEQ    OPLSL
-            BRA OPLSR
-            
-        
-CHECKASX
-            CMP.B #01,D7
-            BEQ OPASL
-            BRA OPASR
-            
-        
-CHECKROX
-            CMP.B #01,D7
-            BEQ  OPROL
-            BRA OPROR
-           
-        
-ROTATION    MOVE.W D0,D1
-            AND.W #$100,D1
-            CMP.W #$100,D1
-            BEQ LEFT
-            BRA RIGHT
-LEFT 
-            MOVEQ #1, D7
-            RTS
-RIGHT       
-            MOVEQ #0, D7
-            RTS
+OPASRR          LEA     ASRMESSAGE, A1 *Store the ASR (register) message
+                MOVE.B  #$16, D4
+                RTS
 
-OPLSR  
-        LEA LSRMESSAGE,A1
-        RTS
-        
-OPLSL   LEA LSLMESSAGE,A1
-        RTS
+OPROLM          LEA     ROLMESSAGE, A1 *Store the ROL (memory) message
+                MOVE.B  #$17, D4
+                RTS
 
-OPASL   LEA ASLMESSAGE,A1
-        RTS
+OPROLR          LEA     ROLMESSAGE, A1 *Store the ROL (register) message
+                RTS
 
+OPRORM          LEA     RORMESSAGE, A1 *Store the ROR (memory) message
+                RTS
 
-OPASR   LEA ASRMESSAGE,A1
-        RTS
-        
-OPROR   LEA RORMESSAGE,A1
-        RTS
-        
-OPROL   LEA ROLMESSAGE,A1
-        RTS
+OPRORR          LEA     RORMESSAGE, A1 *Store the ROR (register) message
+                RTS
+
 *---------------------------------------END_CHECK1110--------------------------------------------------------
 
 
@@ -416,6 +437,7 @@ CHECKOPS        *******Check for NOP and RTS since they are constant
                 
  
 OPNOP           LEA NOPMESSAGE,A1
+                MOVE.B  #$0, D4
                 RTS    
 OPJSR
                 LEA JSRMESSAGE,A1
