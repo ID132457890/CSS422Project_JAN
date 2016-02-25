@@ -265,12 +265,15 @@ OPROLM          LEA     ROLMESSAGE, A1 *Store the ROL (memory) message
                 RTS
 
 OPROLR          LEA     ROLMESSAGE, A1 *Store the ROL (register) message
+                MOVE.B  #$17, D4
                 RTS
 
 OPRORM          LEA     RORMESSAGE, A1 *Store the ROR (memory) message
+                MOVE.B  #$17, D4
                 RTS
 
 OPRORR          LEA     RORMESSAGE, A1 *Store the ROR (register) message
+                MOVE.B  #$17, D4
                 RTS
 
 *---------------------------------------END_CHECK1110--------------------------------------------------------
@@ -285,7 +288,9 @@ CHECK1010       MOVE.W D0,D1 *restore the opcode to d1
                 CMP.W #$B000,D1
                 BEQ OPCMP
                 RTS
+                
 OPCMP           LEA CMPMESSAGE, A1
+                MOVE.B  #$19, D4
                 RTS
 *---------------------------------------------- CHECK1011-----------------------------------------------
 
@@ -301,7 +306,9 @@ CHECK0111       *Check for MOVEQ opcode
                 CMP.W #$7000,D1
                 BEQ OPMOVEQ
                 RTS
+                
 OPMOVEQ         LEA MOVEQMESSAGE, A1
+                MOVE.B  #$2, D4
                 RTS
 
 *------------------------------------------------CHECK0111----------------------------------------------
@@ -318,7 +325,9 @@ CHECK0110       *Check for BCC opcode
                 CMP.W #$6000,D1
                 BEQ OPBCC
                 RTS
+                
 OPBCC           LEA BCCMESSAGE, A1
+                MOVE.B  #$21, D4
                 RTS
 *------------------------------------------CHECK0110-------------------------------------------------------
 
@@ -344,8 +353,11 @@ CHECKADDADDA    AND.W #$1C0, D1
                 BEQ OPADDA
                 BRA OPADD
 OPADDA          LEA ADDAMESSAGE,A1
+                MOVE.B  #$5, D4
                 RTS
+                
 OPADD           LEA ADDMESSAGE,A1
+                MOVE.B  #$4, D4
                 RTS
 *--------------------------------------------CHECK1101--------------------------------------------------
 
@@ -362,6 +374,7 @@ CHECK1001       *Check for sub or suba
                 CMP.W #$9000, D1
                 BEQ CHECKSUBSUBA
                 RTS
+                
 CHECKSUBSUBA    AND.W #$1C0, D1
                 CMP.W #$1C0, D1
                 BEQ OPSUBA
@@ -372,8 +385,11 @@ CHECKSUBSUBA    AND.W #$1C0, D1
                 BEQ OPSUBA
                 BRA OPSUB
 OPSUBA          LEA SUBAMESSAGE,A1
+                MOVE.B  #$8, D4
                 RTS
+                
 OPSUB           LEA SUBMESSAGE,A1
+                MOVE.B  #$7, D4
                 RTS
 *--------------------------------------------------------CHECK1001----------------------------------------
 
@@ -388,7 +404,9 @@ CHECK1000       *Check for DIVS word
                 CMP.W #$8000,D1
                 BEQ OPDIVS
                 RTS
+                
 OPDIVS          LEA DIVSMESSAGE,A1
+                MOVE.B  #$10, D4
                 RTS
 *--------------------------------------CHECK1000-----------------------------------------------------------
 
@@ -441,15 +459,23 @@ OPNOP           LEA NOPMESSAGE,A1
                 RTS    
 OPJSR
                 LEA JSRMESSAGE,A1
+                MOVE.B  #$22, D4
                 RTS
 OPLEA  
                 LEA LEAMESSAGE,A1
+                MOVE.B  #$11, D4
                 RTS
+                
 OPMOVEM         LEA OPMOVEMMESSAGE,A1
+                MOVE.B  #$3, D4
                 RTS
+                
 OPRTS           LEA RTSMESSAGE,A1
+                MOVE.B  #$23, D4
                 RTS
+                
 OPCLR           LEA CLRMESSAGE,A1
+                MOVE.B  #$12, D4
                 RTS
 *----------------------------------------CHECK0100-------------------------------------------------------
 
