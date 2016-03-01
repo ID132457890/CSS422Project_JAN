@@ -10,12 +10,12 @@ START:                  ; first instruction of program
 
 *-----------NOP--------------------------------
 *Description: Decode NOP Checks for other various information about the opcode 
-DECODENOP       MOVE #$0,D4 *Type of Opcode identified as NOP stored into D4
+DECODENOP       
                 
 
 *-----------MOVE--------------------------------
 *Description: Decode MOVE Checks for other various information about the opcode 
-DECODEMOVE      MOVE #$1,D4
+DECODEMOVE      
                 CMP.B   #$0,D7     *Compare if the size is a byte  
                 BEQ     MOVESIZEB
     
@@ -27,7 +27,7 @@ DECODEMOVE      MOVE #$1,D4
 
 *-----------MOVEQ--------------------------------
 *Description: Decode MOVE Checks for other various information about the opcode 
-DECODEMOVEQ     MOVE #$2,D4    
+DECODEMOVEQ        
                 BEQ     MOVEQSIZEL
                 
 *-----------MOVEM--------------------------------
@@ -41,7 +41,7 @@ DECODEMOVEM     MOVE #$3,D4
              
 *-----------ADD--------------------------------
 *Description: Decode ADD Checks for other various information about the opcode 
-DECODEADD       MOVE #$4,D4  *Type of Opcode identified as ADD stored into D4
+DECODEADD       
                 CMP.B   #$0,D7     *Compare if the size is a byte  
                 BEQ     ADDSIZEB
     
@@ -53,7 +53,7 @@ DECODEADD       MOVE #$4,D4  *Type of Opcode identified as ADD stored into D4
                 
 *-----------ADDA--------------------------------
 *Description: Decode ADDA Checks for other various information about the opcode 
-DECODEADDA      MOVE #$5,D4  *Type of Opcode identified as ADD stored into D4
+DECODEADDA      
                 CMP.B   #$0,D7     *Compare if the size is a byte  
                 BEQ     ADDASIZEB
     
@@ -66,7 +66,7 @@ DECODEADDA      MOVE #$5,D4  *Type of Opcode identified as ADD stored into D4
 *-----------ADDI--------------------------------
 *Description: Decode ADDI Checks for other various information about the opcode 
 
-DECODEADDI      MOVE    #$6,D4
+DECODEADDI     
                 CMP.B   #$0,D7     *Compare if the size is a byte  
                 BEQ     ADDISIZEB
     
@@ -79,7 +79,7 @@ DECODEADDI      MOVE    #$6,D4
 
 *-----------SUB--------------------------------
 *Description: Decode SUB Checks for other various information about the opcode 
-DECODESUB       MOVE #$7,D4
+DECODESUB       
                 CMP.B   #$0,D7     *Compare if the size is a byte  
                 BEQ     SUBSIZEB
     
@@ -91,7 +91,7 @@ DECODESUB       MOVE #$7,D4
 
 *-----------SUBA--------------------------------
 *Description: Decode SUBA Checks for other various information about the opcode 
-DECODESUBA      MOVE #$8,D4
+DECODESUBA      
     
                 CMP.B   #$1,D7     *Compare if the size is a word 
                 BEQ     SUBASIZEW
@@ -101,7 +101,7 @@ DECODESUBA      MOVE #$8,D4
 
 *-----------MULS--------------------------------
 *Description: Decode MULS Checks for other various information about the opcode 
-DECODEMULS      MOVE #$9,D4
+DECODEMULS      
                 CMP.B   #$1,D7     *Compare if the size is a word 
                 BEQ     SIXBITSRCONLYSIZEW          
     
@@ -110,7 +110,7 @@ DECODEMULS      MOVE #$9,D4
 
 *-----------DIVS--------------------------------
 *Description: Decode DIVS Checks for other various information about the opcode 
-DECODEDIVS      MOVE #$10,D4
+DECODEDIVS      
                 CMP.B   #$1,D7     *Compare if the size is a word 
                 BEQ     SIXBITSRCONLYSIZEW          
     
@@ -119,13 +119,13 @@ DECODEDIVS      MOVE #$10,D4
 
 *-----------LEA--------------------------------
 *Description: Decode LEA Checks for other various information about the opcode 
-DECODELEA       MOVE #$11,D4
+DECODELEA       
                 CMP.B   #$2,D7     *Compare if the size is a long 
                 BEQ     LEASIZEL          
 
 *-----------CLR--------------------------------
 *Description: Decode CLR Checks for other various information about the opcode 
-DECODECLR       MOVE #$12,D4
+DECODECLR       
 
                 CMP.B   #$0,D7     *Compare if the size is a byte  
                 BEQ     CLRSIZEB
@@ -138,7 +138,7 @@ DECODECLR       MOVE #$12,D4
 
 *-----------AND--------------------------------
 *Description: Decode AND Checks for other various information about the opcode 
-DECODEAND       MOVE #$13,D4
+DECODEAND       
                 CMP.B   #$0,D7     *Compare if the size is a byte  
                 BEQ     ANDSIZEB
     
@@ -150,7 +150,7 @@ DECODEAND       MOVE #$13,D4
 
 *-----------ANDI--------------------------------
 *Description: Decode AND Checks for other various information about the opcode 
-DECODEANDI      MOVE #$14,D4
+DECODEANDI      
                 CMP.B   #$0,D7     *Compare if the size is a byte  
                 BEQ     EIGHTBITDESTONLYSIZEB
     
@@ -162,28 +162,27 @@ DECODEANDI      MOVE #$14,D4
 
 *-----------LSx Register--------------------------------
 *Description: Decode LSx Register Checks for other various information about the opcode 
-DECODELSxREG    MOVE #$15,D4
+DECODELSxREG    
 
 *-----------ASx Regiser--------------------------------
 *Description: Decode ASx Register Checks for other various information about the opcode 
-DECODEAsxREG    MOVE #$16,D4
+DECODEAsxREG    
 
 *-----------ROx Regiser--------------------------------
 *Description: Decode ROx Register Checks for other various information about the opcode 
-DECODEROxREG    MOVE #$17,D4
+DECODEROxREG    
 
 *-----------BCHG Regiser--------------------------------
 *Description: Decode BCHG Register Checks for other various information about the opcode 
-DECODEBCHGREG   MOVE #$18,D4
+DECODEBCHGREG   
 
 *-----------CMP --------------------------------
 *Description: Decode CMP Checks for other various information about the opcode 
-DECODEBCHGCMP   MOVE #$19,D4
+DECODEBCHGCMP   
 
 *-----------CMPI--------------------------------
 *Description: Decode CMPI Checks for other various information about the opcode 
-DECODECMPI      MOVE #$20,D4
-
+DECODECMPI      
                 CMP.B   #$0,D7     *Compare if the size is a byte  
                 BEQ     EIGHTBITDESTONLYSIZEB
     
@@ -196,29 +195,29 @@ DECODECMPI      MOVE #$20,D4
 
 *-----------BCC--------------------------------
 *Description: Decode BCC Checks for other various information about the opcode 
-DECODEBCC       MOVE #$21,D4
+DECODEBCC       
                 
 
 *-----------JSR--------------------------------
 *Description: Decode JSR Checks for other various information about the opcode 
-DECODEJSR       MOVE #$22,D4
+DECODEJSR      
                 BRA JSR
 
 *-----------RTS--------------------------------
 *Description: Decode RTS Checks for other various information about the opcode 
-DECODERTS       MOVE #$23,D4
+DECODERTS       
                                         
 *-----------LSx Memory--------------------------------
 *Description: Decode LSX MEMORY Checks for other various information about the opcode 
-DECODELSXMEMORY   MOVE #$25,D4
+DECODELSXMEMORY   
 
 *-----------ASx Memory--------------------------------
 *Description: Decode ASx MEMORY Checks for other various information about the opcode 
-DECODEASXMEMORY    MOVE #$26,D4
+DECODEASXMEMORY    
 
 *-----------ROx Memory--------------------------------
 *Description: Decode ROx MEMORY Checks for other various information about the opcode 
-DECODEROXMEMORY        MOVE #$27,D4          
+DECODEROXMEMORY                  
               
  
 *---------Determine Size-------------- 
@@ -425,23 +424,48 @@ CLRSIZEL    MOVE.B  (A0),D2
 ANDSIZEB    MOVE.B  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.W  #$2, A0 
-        
-            *I need to check if SRC has EA 
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$0, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     ANDSRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$40, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     ANDSRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$80, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     ANDSRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$100, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     ANDDEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$140, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     ANDDEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$180, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     ANDDEST
+            
+  
+            
 
 ANDSIZEW    MOVE.B  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.W  #$4, A0 
         
-            *I need to check if SRC has EA 
+            BRA     
 
-ANDSIZEL    MOVE.B  (A0),D2 
+ANDSIZEL    MOVE.B  (A0),D2  
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.W  #$8, A0 
         
             *I need to check if SRC has EA. 
             
 MOVEDEST    AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 00000111000000
-            CMP.W   #$0, D1  *Checks to see if the size is Dn(Data Register) 
+            CMP.W   #$0, D1   *Checks to see if the size is Dn(Data Register) 
             BEQ     MOVEDATAREG  *Goes to Dn Process 
         
             MOVE.W  D0, D1   *Store temp of D1 into D0 
@@ -488,13 +512,58 @@ MOVESRC     AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000001110000
             MOVE.W  D0, D1
             AND.W   #$1C0, D1
             CMP.W   #$100, D1 *Checks -(An)
-            BEQ     MOVEPREADDRSRC
+            BEQ     PREADDR
         
             MOVE.W  D0, D1
             AND.W   #$1C0, D1
             CMP.W   #$1C0, D1 *Checks Addressing Mode
-            BEQ     MOVEADDRESSVALUESRC  
+            BEQ     ADDRESSVALUE  
             
+ANDSRC      AND.W   #$38, D1 *Moves hex value to D1 for Comparison 00000111000000
+            CMP.W   #$0, D1  *Checks to see if the size is Dn(Data Register) 
+            BEQ     DATAREGSRC  *Goes to Dn Process 
+            
+            MOVE.W  D0, D1   *Store temp of D1 into D0 
+            AND.W   #$38, D1 
+            CMP.W   #$80, D1   *Checks (An)
+            BEQ     INDIRECTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$18, D1 *Checks (An)+
+            BEQ     POSTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$20, D1 *Checks -(An)
+            BEQ     PREADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$38, D1 *Checks Addressing Mode
+            BEQ     ADDRESSVALUEWITHDATA 
+            
+ANDDEST     AND.W   #$38, D1 
+            CMP.W   #$80, D1        *Checks (An)
+            BEQ     INDIRECTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$18, D1        *Checks (An)+
+            BEQ     POSTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$20, D1       *Checks -(An)
+            BEQ     PREADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$38, D1       *Checks Addressing Mode
+            BEQ     ADDRESSVALUEWITHDATA
+            
+            
+
 ADDDEST     AND.W   #$38, D1 *Moves hex value to D1 for Comparison 000000111000
             CMP.W   #$0, D1  *Checks to see if the size is Dn(Data Register) 
             BEQ     DATAREG  *Goes to Dn Process 
@@ -869,7 +938,7 @@ MOVEADDRW       MOVE.W  (A0),D3
                 ADDA.W  #$4, A0
                 BRA MOVESRC
                 
-MOVEADDRL        MOVE.W  (A0),D3
+MOVEADDRL       MOVE.W  (A0),D3
                 MOVE.B  #$7, D6
                 ADDA.W  #$8, A0
                 BRA MOVESRC
@@ -879,7 +948,7 @@ MOVEADDRWSRC    MOVE.W  (A0),D3
                 ADDA.W  #$4, A0
                 
                 
-MOVEADDRLSRC     MOVE.W  (A0),D3
+MOVEADDRLSRC    MOVE.W  (A0),D3
                 MOVE.B  #$7, D6
                 ADDA.W  #$8, A0
                 
