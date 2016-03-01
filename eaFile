@@ -1,69 +1,903 @@
 *-----------------------------------------------------------
-* Title      :
-* Written by :
-* Date       :
-* Description:
+* Title      : Dissasembler
+* Written by : Amrit, Nathan, John 
+* Date       : 
+* Description: Decode EA 
 *-----------------------------------------------------------
     ORG    $1000
 START:                  ; first instruction of program
 
-    CMP.B   D7, #$0
-    BEQ     SIZEB
+
+*-----------NOP--------------------------------
+*Description: Decode NOP Checks for other various information about the opcode 
+DECODENOP       MOVE #$0,D4 *Type of Opcode identified as NOP stored into D4
+                
+
+*-----------MOVE--------------------------------
+*Description: Decode MOVE Checks for other various information about the opcode 
+DECODEMOVE      MOVE #$1,D4
+                CMP.B   #$0,D7     *Compare if the size is a byte  
+                BEQ     MOVESIZEB
     
-    CMP.B   D7, #$1
-    BEQ     SIZEW
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     MOVESIZEW
     
-    CMP.B   D7, #$2
-    BEQ     SIZEL
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     MOVESIZEL 
+
+*-----------MOVEQ--------------------------------
+*Description: Decode MOVE Checks for other various information about the opcode 
+DECODEMOVEQ     MOVE #$2,D4    
+                BEQ     MOVEQSIZEL
+                
+*-----------MOVEM--------------------------------
+*Description: Decode MOVEM Checks for other various information about the opcode 
+DECODEMOVEM     MOVE #$3,D4 
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     MOVEMSIZEW
     
-SIZEB   MOVE.B  (A0), D2
-        MOVE.B  #$8, D5
-        ADDA.B  #$2, A0   
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     MOVEMSIZEL 
+             
+*-----------ADD--------------------------------
+*Description: Decode ADD Checks for other various information about the opcode 
+DECODEADD       MOVE #$4,D4  *Type of Opcode identified as ADD stored into D4
+                CMP.B   #$0,D7     *Compare if the size is a byte  
+                BEQ     ADDSIZEB
+    
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     ADDSIZEW
+    
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     ADDSIZEL 
+                
+*-----------ADDA--------------------------------
+*Description: Decode ADDA Checks for other various information about the opcode 
+DECODEADDA      MOVE #$5,D4  *Type of Opcode identified as ADD stored into D4
+                CMP.B   #$0,D7     *Compare if the size is a byte  
+                BEQ     ADDASIZEB
+    
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     ADDASIZEW
+    
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     ADDASIZEL 
+
+*-----------ADDI--------------------------------
+*Description: Decode ADDI Checks for other various information about the opcode 
+
+DECODEADDI      MOVE    #$6,D4
+                CMP.B   #$0,D7     *Compare if the size is a byte  
+                BEQ     ADDISIZEB
+    
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     ADDISIZEW
+    
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     ADDISIZEL
+                
+
+*-----------SUB--------------------------------
+*Description: Decode SUB Checks for other various information about the opcode 
+DECODESUB       MOVE #$7,D4
+                CMP.B   #$0,D7     *Compare if the size is a byte  
+                BEQ     SUBSIZEB
+    
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     SUBSIZEW
+    
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     SUBSIZEL
+
+*-----------SUBA--------------------------------
+*Description: Decode SUBA Checks for other various information about the opcode 
+DECODESUBA      MOVE #$8,D4
+    
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     SUBASIZEW
+    
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     SUBASIZEL
+
+*-----------MULS--------------------------------
+*Description: Decode MULS Checks for other various information about the opcode 
+DECODEMULS      MOVE #$9,D4
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     SIXBITSRCONLYSIZEW          
+    
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     SIXBITSRCONLYSIZEL          
+
+*-----------DIVS--------------------------------
+*Description: Decode DIVS Checks for other various information about the opcode 
+DECODEDIVS      MOVE #$10,D4
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     SIXBITSRCONLYSIZEW          
+    
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     SIXBITSRCONLYSIZEL   
+
+*-----------LEA--------------------------------
+*Description: Decode LEA Checks for other various information about the opcode 
+DECODELEA       MOVE #$11,D4
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     LEASIZEL          
+
+*-----------CLR--------------------------------
+*Description: Decode CLR Checks for other various information about the opcode 
+DECODECLR       MOVE #$12,D4
+
+                CMP.B   #$0,D7     *Compare if the size is a byte  
+                BEQ     CLRSIZEB
+    
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     CLRSIZEW
+    
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     CLRSIZEL
+
+*-----------AND--------------------------------
+*Description: Decode AND Checks for other various information about the opcode 
+DECODEAND       MOVE #$13,D4
+                CMP.B   #$0,D7     *Compare if the size is a byte  
+                BEQ     ANDSIZEB
+    
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     ANDSIZEW
+    
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     ANDSIZEL
+
+*-----------ANDI--------------------------------
+*Description: Decode AND Checks for other various information about the opcode 
+DECODEANDI      MOVE #$14,D4
+                CMP.B   #$0,D7     *Compare if the size is a byte  
+                BEQ     EIGHTBITDESTONLYSIZEB
+    
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     EIGHTBITDESTONLYSIZEW
+    
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     EIGHTBITDESTONLYSIZEL
+
+*-----------LSx Register--------------------------------
+*Description: Decode LSx Register Checks for other various information about the opcode 
+DECODELSxREG    MOVE #$15,D4
+
+*-----------ASx Regiser--------------------------------
+*Description: Decode ASx Register Checks for other various information about the opcode 
+DECODEAsxREG    MOVE #$16,D4
+
+*-----------ROx Regiser--------------------------------
+*Description: Decode ROx Register Checks for other various information about the opcode 
+DECODEROxREG    MOVE #$17,D4
+
+*-----------BCHG Regiser--------------------------------
+*Description: Decode BCHG Register Checks for other various information about the opcode 
+DECODEBCHGREG   MOVE #$18,D4
+
+*-----------CMP --------------------------------
+*Description: Decode CMP Checks for other various information about the opcode 
+DECODEBCHGCMP   MOVE #$19,D4
+
+*-----------CMPI--------------------------------
+*Description: Decode CMPI Checks for other various information about the opcode 
+DECODECMPI      MOVE #$20,D4
+
+                CMP.B   #$0,D7     *Compare if the size is a byte  
+                BEQ     EIGHTBITDESTONLYSIZEB
+    
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     EIGHTBITDESTONLYSIZEW
+    
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     EIGHTBITDESTONLYSIZEL
+
+
+*-----------BCC--------------------------------
+*Description: Decode BCC Checks for other various information about the opcode 
+DECODEBCC       MOVE #$21,D4
+                
+
+*-----------JSR--------------------------------
+*Description: Decode JSR Checks for other various information about the opcode 
+DECODEJSR       MOVE #$22,D4
+                BRA JSR
+
+*-----------RTS--------------------------------
+*Description: Decode RTS Checks for other various information about the opcode 
+DECODERTS       MOVE #$23,D4
+                                        
+*-----------LSx Memory--------------------------------
+*Description: Decode LSX MEMORY Checks for other various information about the opcode 
+DECODELSXMEMORY   MOVE #$25,D4
+
+*-----------ASx Memory--------------------------------
+*Description: Decode ASx MEMORY Checks for other various information about the opcode 
+DECODEASXMEMORY    MOVE #$26,D4
+
+*-----------ROx Memory--------------------------------
+*Description: Decode ROx MEMORY Checks for other various information about the opcode 
+DECODEROXMEMORY        MOVE #$27,D4          
+              
+ 
+*---------Determine Size-------------- 
+
+TWELVEBITSRCONLYSIZEB       MOVE.B  (A0),D2 
+                            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+                            ADDA.W  #$2, A0 
         
-        BRA     DEST
+                            BRA     TWELVEBITSRCONLY *Branches to destination
+
+TWELVEBITSRCONLYSIZEW       MOVE.B  (A0),D2 
+                            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+                            ADDA.W  #$2, A0 
         
-DEST    AND.W   #$38, D1
-        CMP.W   #$0, D1
-        BEQ     DATAREG
+                            BRA     TWELVEBITSRCONLY *Branches to destination
+
+TWELVEBITSRCONLYSIZEL       MOVE.B  (A0),D2 
+                            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+                            ADDA.W  #$2, A0 
         
-        MOVE.W  D0, D1
-        AND.W   #$38, D1
-        CMP.W   #$10, D1
-        BEQ     INDIRECTADDR
+                            BRA     SIXBITSRCONLY *Branches to destination
+                            
+EIGHTBITDESTONLYSIZEB       MOVE.B  (A0),D2 
+                            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+                            ADDA.W  #$2, A0 
         
-        MOVE.W  D0, D1
-        AND.W   #$38, D1
-        CMP.W   #$18, D1
-        BEQ     POSTADDR
+                            BRA     EIGHTBITDESTONLY *Branches to destination
+                            
+EIGHTBITDESTONLYSIZEW       MOVE.B  (A0),D2 
+                            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+                            ADDA.W  #$4, A0 
         
-        MOVE.W  D0, D1
-        AND.W   #$38, D1
-        CMP.W   #$38, D1
-        BEQ     ADDRESSVALUE
+                            BRA     EIGHTBITDESTONLY *Branches to destination
+
+EIGHTBITDESTONLYSIZEL       MOVE.B  (A0),D2 
+                            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+                            ADDA.W  #$8, A0 
+                            
+                            BRA     EIGHTBITDESTONLY *Branches to destination
+                            
+SIXBITSRCONLYSIZEB          MOVE.B  (A0),D2 
+                            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+                            ADDA.W  #$2, A0 
         
-        BRA     ERROR
+                            BRA     SIXBITSRCONLY *Branches to destination
+                            
+SIXBITSRCONLYSIZEW          MOVE.B  (A0),D2 
+                            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+                            ADDA.W  #$2, A0 
         
-DATAREG MOVE.W  D0, D1
-        AND.W   #$7, D1
-        MOVE.W  D1, D3
-        MOVE.B  #$0, D6
+                            BRA     SIXBITSRCONLY *Branches to destination
+
+SIXBITSRCONLYSIZEL          MOVE.B  (A0),D2 
+                            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+                            ADDA.W  #$2, A0 
+        
+                            BRA     SIXBITSRCONLY *Branches to destination
+
+MOVESIZEB   MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$2, A0 
+        
+            BRA     MOVEDEST    *Branches to destination
+
+MOVESIZEW   MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$4, A0 
+        
+            BRA     MOVEDEST    *Branches to destination
+
+MOVESIZEL   MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$8, A0 
+        
+            BRA     MOVEDEST    *Branches to destination
+
+MOVEQSIZEL  MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$8, A0 
+        
+            BRA     MOVEDEST    *Branches to destination
+        
+MOVEMSIZEW  MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$4, A0 
+        
+            BRA     MOVEMDEST    *Branches to destination
+
+MOVEMSIZEL  MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 , BUT WHAT IF SOURCE CAN BE EA TOO!
+            ADDA.W  #$8, A0 
+        
+            BRA     MOVEMDEST    *Branches to destination
+
+ADDSIZEB    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$8, A0 
+        
+            BRA     ADDDEST    *Branches to destination
+        
+ADDSIZEW    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$4, A0 
+        
+            BRA     ADDDEST    *Branches to destination
+
+ADDSIZEL    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 , BUT WHAT IF SOURCE CAN BE EA TOO!
+            ADDA.W  #$8, A0 
+        
+            BRA     ADDDEST    *Branches to destination
+
+
+ADDASIZEB   MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$8, A0 
+        
+            BRA     ADDASRC
+
+ADDASIZEW   MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$4, A0 
+        
+            BRA     ADDASRC
+
+ADDASIZEL   MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 , BUT WHAT IF SOURCE CAN BE EA TOO!
+            ADDA.W  #$8, A0 
+        
+            BRA     ADDASRC
+*---------If the size is a byte , then go to this branch---
+ADDISIZEB   MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$2, A0 
+        
+            BRA     ADDIDEST    *Branches to destination 
+        
+ADDISIZEW   MOVE.W  (A0),D2 
+            MOVE.W  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$4, A0 *
+        
+            BRA     ADDIDEST    *Branches to destination 
+
+ADDISIZEL   MOVE.L  (A0),D2 
+            MOVE.L  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$8, A0 *
+        
+            BRA     ADDIDEST    *Branches to destination 
+            
+SUBSIZEB    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$8, A0 
+        
+            BRA     ADDASRC
+
+SUBSIZEW    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$4, A0 
+        
+            BRA     ADDASRC
+
+SUBSIZEL    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 , BUT WHAT IF SOURCE CAN BE EA TOO!
+            ADDA.W  #$8, A0 
+        
+            BRA     ADDASRC
+
+SUBASIZEW   MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$4, A0 
+        
+            BRA     TWELVEBITSRCONLY
+
+SUBASIZEL   MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 , BUT WHAT IF SOURCE CAN BE EA TOO!
+            ADDA.W  #$8, A0 
+        
+            BRA     TWELVEBITSRCONLY
+            
+LEASIZEL    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 , BUT WHAT IF SOURCE CAN BE EA TOO!
+            ADDA.W  #$8, A0 
+        
+            BRA     LEASRC     
+
+CLRSIZEB    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$2, A0 
+        
+            BRA     CLR
+
+CLRSIZEW    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$4, A0 
+        
+            BRA     CLR
+
+CLRSIZEL    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$8, A0 
+        
+            BRA     CLR
+            
+ANDSIZEB    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$2, A0 
+        
+            *I need to check if SRC has EA 
+
+ANDSIZEW    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$4, A0 
+        
+            *I need to check if SRC has EA 
+
+ANDSIZEL    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.W  #$8, A0 
+        
+            *I need to check if SRC has EA. 
+            
+MOVEDEST    AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 00000111000000
+            CMP.W   #$0, D1  *Checks to see if the size is Dn(Data Register) 
+            BEQ     MOVEDATAREG  *Goes to Dn Process 
+        
+            MOVE.W  D0, D1   *Store temp of D1 into D0 
+            AND.W   #$1C0, D1 
+            CMP.W   #$80, D1   *Checks (An)
+            BEQ     MOVEINDIRECTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$C0, D1
+            CMP.W   #$18, D1 *Checks (An)+
+            BEQ     MOVEPOSTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$1C0, D1
+            CMP.W   #$100, D1 *Checks -(An)
+            BEQ     MOVEPREADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$1C0, D1
+            CMP.W   #$1C0, D1 *Checks Addressing Mode
+            BEQ     MOVEADDRESSVALUE
+            
+            BRA     ERRORDEST       *Gives error if it's none of the them
+            
+MOVESRC     AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 00000111000000
+            CMP.W   #$0, D1  *Checks to see if the size is Dn(Data Register) 
+            BEQ     MOVEDATAREGSRC  *Goes to Dn Process 
+        
+            MOVE.W  D0, D1   *Store temp of D1 into D0 
+            AND.W   #$1C0, D1 
+            CMP.W   #$40, D1   *Checks An
+            BEQ     MOVEDIRECTADDRSRC
+            
+            MOVE.W  D0, D1   *Store temp of D1 into D0 
+            AND.W   #$1C0, D1 
+            CMP.W   #$80, D1   *Checks (An)
+            BEQ     MOVEINDIRECTADDRSRC
+        
+            MOVE.W  D0, D1
+            AND.W   #$C0, D1
+            CMP.W   #$18, D1 *Checks (An)+
+            BEQ     MOVEPOSTADDRSRC
+        
+            MOVE.W  D0, D1
+            AND.W   #$1C0, D1
+            CMP.W   #$100, D1 *Checks -(An)
+            BEQ     MOVEPREADDRSRC
+        
+            MOVE.W  D0, D1
+            AND.W   #$1C0, D1
+            CMP.W   #$1C0, D1 *Checks Addressing Mode
+            BEQ     MOVEADDRESSVALUESRC  
+            
+ADDDEST     AND.W   #$38, D1 *Moves hex value to D1 for Comparison 000000111000
+            CMP.W   #$0, D1  *Checks to see if the size is Dn(Data Register) 
+            BEQ     DATAREG  *Goes to Dn Process 
+        
+            MOVE.W  D0, D1   *Store temp of D1 into D0 
+            AND.W   #$38, D1 
+            CMP.W   #$8, D1   *Checks An
+            BEQ     DIRECTADDR
+            
+            MOVE.W  D0, D1   *Store temp of D1 into D0 
+            AND.W   #$38, D1 
+            CMP.W   #$10, D1   *Checks (An)
+            BEQ     INDIRECTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$18, D1 *Checks (An)+
+            BEQ     POSTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$20, D1 *Checks -(An)
+            BEQ     PREADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$38, D1 *Checks Addressing Mode
+            BEQ     ADDRESSVALUEWITHDATA 
+
+ADDASRC     AND.W   #$38, D1 *Moves hex value to D1 for Comparison 000000111000
+            CMP.W   #$0, D1  *Checks to see if the size is Dn(Data Register) 
+            BEQ     DATAREG  *Goes to Dn Process 
+        
+            MOVE.W  D0, D1   *Store temp of D1 into D0 
+            AND.W   #$38, D1 
+            CMP.W   #$8, D1   *Checks An
+            BEQ     DIRECTADDR
+            
+            MOVE.W  D0, D1   *Store temp of D1 into D0 
+            AND.W   #$38, D1 
+            CMP.W   #$10, D1   *Checks (An)
+            BEQ     INDIRECTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$18, D1 *Checks (An)+
+            BEQ     POSTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$20, D1 *Checks -(An)
+            BEQ     PREADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$38, D1 *Checks Addressing Mode
+            BEQ     ADDRESSVALUEWITHDATA  
+
+TWELVEBITSRCONLY *000000 111 000
+            CMP.W   #$0, D1  *Checks to see if the size is Dn(Data Register) 
+            BEQ     DATAREG  *Goes to Dn Process 
+        
+            MOVE.W  D0, D1   *Store temp of D1 into D0 
+            AND.W   #$38, D1 
+            CMP.W   #$8, D1   *Checks An
+            BEQ     DIRECTADDR
+            
+            MOVE.W  D0, D1   *Store temp of D1 into D0 
+            AND.W   #$38, D1 
+            CMP.W   #$10, D1   *Checks (An)
+            BEQ     INDIRECTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$18, D1 *Checks (An)+
+            BEQ     POSTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$20, D1 *Checks -(An)
+            BEQ     PREADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$38, D1 *Checks Addressing Mode
+            BEQ     ADDRESSVALUEWITHDATA  
+            
+EIGHTBITDESTONLY *00 111 000
+            CMP.W   #$0, D1  *Checks to see if the size is Dn(Data Register) 
+            BEQ     DATAREG  *Goes to Dn Process 
+            
+            MOVE.W  D0, D1   *Store temp of D1 into D0 
+            AND.W   #$38, D1 
+            CMP.W   #$10, D1   *Checks (An)
+            BEQ     INDIRECTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$18, D1 *Checks (An)+
+            BEQ     POSTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$20, D1 *Checks -(An)
+            BEQ     PREADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$38, D1 *Checks Addressing Mode
+            BEQ     ADDRESSVALUE
+
+SIXBITSRCONLY *111 000
+            CMP.W   #$0, D1  *Checks to see if the size is Dn(Data Register) 
+            BEQ     DATAREG  *Goes to Dn Process 
+            
+            MOVE.W  D0, D1   *Store temp of D1 into D0 
+            AND.W   #$38, D1 
+            CMP.W   #$10, D1   *Checks (An)
+            BEQ     INDIRECTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$18, D1 *Checks (An)+
+            BEQ     POSTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$20, D1 *Checks -(An)
+            BEQ     PREADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$38, D1 *Checks Addressing Mode
+            BEQ     ADDRESSVALUEWITHDATA  
+            
+JSR    
+            MOVE.W  D0, D1   *Store temp of D1 into D0 
+            AND.W   #$38, D1 
+            CMP.W   #$10, D1   *Checks (An)
+            BEQ     INDIRECTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$38, D1 *Checks Addressing Mode
+            BEQ     ADDRESSVALUE         
+             
+LEASRC      MOVE.W  D0, D1   *Store temp of D1 into D0 
+            AND.W   #$38, D1 
+            CMP.W   #$10, D1   *Checks (An)
+            BEQ     INDIRECTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$38, D1 *Checks Addressing Mode
+            BEQ     ADDRESSVALUE
+            
+CLR         CMP.W   #$0, D1  *Checks to see if the size is Dn(Data Register) 
+            BEQ     DATAREG  *Goes to Dn Process 
+            
+            MOVE.W  D0, D1   *Store temp of D1 into D0 
+            AND.W   #$38, D1 
+            CMP.W   #$10, D1   *Checks (An)
+            BEQ     INDIRECTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$18, D1 *Checks (An)+
+            BEQ     POSTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$20, D1 *Checks -(An)
+            BEQ     PREADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$38, D1 *Checks Addressing Mode
+            BEQ     ADDRESSVALUE
+
+ADDIDEST    AND.W   #$38, D1 *Moves hex value to D1 for Comparison 00111000
+            CMP.W   #$0, D1  *Checks to see if the size is Dn(Data Register) 
+            BEQ     DATAREG  *Goes to Dn Process 
+        
+            MOVE.W  D0, D1   *Store temp of D1 into D0 
+            AND.W   #$38, D1 *Checks to see if the size is (An)
+            CMP.W   #$10, D1    
+            BEQ     INDIRECTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$18, D1
+            BEQ     POSTADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$20, D1
+            BEQ     PREADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$38, D1
+            BEQ     ADDRESSVALUE
+        
+            BRA     ERRORDEST       *Gives error if it's none of the them
+        
+MOVEMDEST   MOVE.W  D0, D1   *Store temp of D1 into D0 0010000
+            AND.W   #$38, D1 *Checks to see if the size is (An)
+            CMP.W   #$10, D1    
+            BEQ     INDIRECTADDR
+        
+            MOVE.W  D0, D1  
+            AND.W   #$38, D1
+            CMP.W   #$20, D1
+            BEQ     PREADDR
+        
+            MOVE.W  D0, D1
+            AND.W   #$38, D1
+            CMP.W   #$38, D1
+            BEQ     ADDRESSVALUE
+        
+            BRA     ERRORDEST       *Gives error if it's none of the them   
+            
+
+        
+MOVEDATAREG     MOVE.W  D0, D1      *Moves value to D1 just incase. 
+                AND.W   #$7,D1      *Isolates the MODE 
+                MOVE.W  D1, D3
+                MOVE.B  #$0, D6
+                BRA MOVESRC
+                
+            
+MOVEINDIRECTADDR    MOVE.W D0,D1 
+                    AND.W   #$7,D1  *Isolates the MODE 
+                    MOVE.W  D1, D3
+                    MOVE.B  #$3, D6
+                    BRA MOVESRC
+                
+
+MOVEPOSTADDR    MOVE.W D0,D1 
+                AND.W   #$7,D1  *Isolates the MODE 
+                MOVE.W  D1, D3
+                MOVE.B  #$4, D6
+                BRA MOVESRC
+                
+MOVEPREADDR     MOVE.W D0,D1 
+                AND.W   #$7,D1  *Isolates the MODE 
+                MOVE.W  D1, D3
+                MOVE.B  #$5, D6
+                BRA MOVESRC
+        
+MOVEADDRESSVALUE    MOVE.W  D0, D1
+                    AND.W   #$7, D1
+                
+                    CMP.W   #$0, D1
+                    BEQ     MOVEADDRW
+                
+                    CMP.W   #$1, D1
+                    BEQ     MOVEADDRL
+                
+                    BRA     ERRORADDRESS
+                    
+MOVEDATAREGSRC  MOVE.W  D0, D1      *Moves value to D1 just incase. 
+                AND.W   #$7,D1      *Isolates the MODE 
+                MOVE.W  D1, D3
+                MOVE.B  #$0, D6
+                BRA MOVESRC
+                
+MOVEDIRECTADDRSRC      MOVE.W D0,D1 
+                       AND.W   #$7,D1  *Isolates the MODE 
+                       MOVE.W  D1, D3
+                       MOVE.B  #$1, D6
+                    
+      
+                    
+MOVEINDIRECTADDRSRC    MOVE.W D0,D1 
+                       AND.W   #$7,D1  *Isolates the MODE 
+                       MOVE.W  D1, D3
+                       MOVE.B  #$3, D6
+                    
+                
+
+MOVEPOSTADDRSRC     MOVE.W D0,D1 
+                    AND.W   #$7,D1  *Isolates the MODE 
+                    MOVE.W  D1, D3
+                    MOVE.B  #$4, D6
+                
+                
+MOVEPREADDRSRC     MOVE.W D0,D1 
+                   AND.W   #$7,D1  *Isolates the MODE 
+                   MOVE.W  D1, D3
+                   MOVE.B  #$5, D6
+               
+        
+MOVEADDRESSVALUESRC MOVE.W  D0, D1
+                    AND.W   #$7, D1
+                
+                    CMP.W   #$0, D1
+                    BEQ     MOVEADDRWSRC
+                
+                    CMP.W   #$1, D1
+                    BEQ     MOVEADDRLSRC
+                
+                    BRA     ERRORADDRESS
+                
+DATAREG         MOVE.W  D0, D1      *Moves value to D1 just incase. 
+                AND.W   #$7,D1      *Isolates the MODE 
+                MOVE.W  D1, D3
+                MOVE.B  #$0, D6
+                BRA MOVESRC
+            
+DIRECTADDR      MOVE.W D0,D1 
+                AND.W   #$7,D1  *Isolates the MODE 
+                MOVE.W  D1, D3
+                MOVE.B  #$1, D6
+
+INDIRECTADDR    MOVE.W D0,D1 
+                AND.W   #$7,D1  *Isolates the MODE 
+                MOVE.W  D1, D3
+                MOVE.B  #$3, D6
+                
+
+POSTADDR        MOVE.W D0,D1 
+                AND.W   #$7,D1  *Isolates the MODE 
+                MOVE.W  D1, D3
+                MOVE.B  #$4, D6
+                
+PREADDR         MOVE.W D0,D1 
+                AND.W   #$7,D1  *Isolates the MODE 
+                MOVE.W  D1, D3
+                MOVE.B  #$5, D6
         
 ADDRESSVALUE    MOVE.W  D0, D1
                 AND.W   #$7, D1
+                
                 CMP.W   #$0, D1
                 BEQ     ADDRW
                 
                 CMP.W   #$1, D1
                 BEQ     ADDRL
                 
-                BRA     ERROR2
+                BRA     ERRORADDRESS
+         
+ADDRESSVALUEWITHDATA
+                MOVE.W  D0, D1
+                AND.W   #$7, D1
                 
-ADDRW           MOVE.W  (A0), D3
+                CMP.W   #$0, D1
+                BEQ     ADDRW
+                
+                CMP.W   #$1, D1
+                BEQ     ADDRL
+                
+                CMP.W   #$8, D1
+                BEQ     ADDRD
+                
+                BRA     ERRORADDRESS
+
+ADDRW           MOVE.W  (A0),D3
                 MOVE.B  #$6, D6
                 ADDA.W  #$4, A0
+                
+ADDRL           MOVE.W  (A0),D3
+                MOVE.B  #$7, D6
+                ADDA.W  #$8, A0
+                
+ADDRD           MOVE.W  (A0),D3
+                MOVE.B  #$8, D6
+                ADDA.W  #$8, A0
+                
+MOVEADDRW       MOVE.W  (A0),D3
+                MOVE.B  #$6, D6
+                ADDA.W  #$4, A0
+                BRA MOVESRC
+                
+MOVEADDRL        MOVE.W  (A0),D3
+                MOVE.B  #$7, D6
+                ADDA.W  #$8, A0
+                BRA MOVESRC
+                
+MOVEADDRWSRC    MOVE.W  (A0),D3
+                MOVE.B  #$6, D6
+                ADDA.W  #$4, A0
+                
+                
+MOVEADDRLSRC     MOVE.W  (A0),D3
+                MOVE.B  #$7, D6
+                ADDA.W  #$8, A0
+                
+                
+
+                
+ERRORDEST
+                *This will be responsible for printing out the error of the destination
+
+ERRORADDRESS
+                *This will be responsible for printing out the error
 
     SIMHALT             ; halt simulator
 
 * Put variables and constants here
-
+INVALIDERRORMESSAGE     DC.B 'Not valid', 0
     END    START        ; last line of source
+
+
+
+
