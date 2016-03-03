@@ -160,25 +160,49 @@ DECODEANDI
                 CMP.B   #$2,D7     *Compare if the size is a long 
                 BEQ     EIGHTBITDESTONLYSIZEL
 
-*-----------LSx Register--------------------------------
+*-----------LSL Register--------------------------------
 *Description: Decode LSx Register Checks for other various information about the opcode 
-DECODELSxREG    
+DECODELSLREG    
+                CMP.B   #$0,D7     *Compare if the size is a byte  
+                BEQ     LSLREGSIZEB
+    
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     LSLREGSIZEW
+    
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     LSLREGSIZEL
+*-----------ASR Regiser--------------------------------
+*Description: Decode ASR Register Checks for other various information about the opcode 
+DECODEASRREG    CMP.B   #$0,D7     *Compare if the size is a byte  
+                BEQ     ASRREGSIZEB
+    
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     ASRREGSIZEW
+    
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     ASRREGSIZEL
 
-*-----------ASx Regiser--------------------------------
-*Description: Decode ASx Register Checks for other various information about the opcode 
-DECODEAsxREG    
-
-*-----------ROx Regiser--------------------------------
-*Description: Decode ROx Register Checks for other various information about the opcode 
-DECODEROxREG    
-
-*-----------BCHG Regiser--------------------------------
-*Description: Decode BCHG Register Checks for other various information about the opcode 
-DECODEBCHGREG   
+*-----------ROL Regiser--------------------------------
+*Description: Decode ROL Register Checks for other various information about the opcode 
+DECODEROLREG    CMP.B   #$0,D7     *Compare if the size is a byte  
+                BEQ     ROLREGSIZEB
+    
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     ROLREGSIZEW
+    
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     ROLREGSIZEL
 
 *-----------CMP --------------------------------
 *Description: Decode CMP Checks for other various information about the opcode 
-DECODEBCHGCMP   
+DECODECMP       CMP.B   #$0,D7     *Compare if the size is a byte  
+                BEQ     EIGHTBITDESTONLYSIZEB
+    
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     EIGHTBITDESTONLYSIZEW
+    
+                CMP.B   #$2,D7     *Compare if the size is a long 
+                BEQ     EIGHTBITDESTONLYSIZEL
 
 *-----------CMPI--------------------------------
 *Description: Decode CMPI Checks for other various information about the opcode 
@@ -206,18 +230,23 @@ DECODEJSR
 *-----------RTS--------------------------------
 *Description: Decode RTS Checks for other various information about the opcode 
 DECODERTS       
+                
                                         
-*-----------LSx Memory--------------------------------
-*Description: Decode LSX MEMORY Checks for other various information about the opcode 
-DECODELSXMEMORY   
+*-----------LSL Memory--------------------------------
+*Description: Decode LSL MEMORY Checks for other various information about the opcode 
+DECODELSLMEMORY       
+                CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     LSLMEMSIZEW
 
 *-----------ASx Memory--------------------------------
 *Description: Decode ASx MEMORY Checks for other various information about the opcode 
-DECODEASXMEMORY    
+DECODEASXMEMORY CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     ASXMEMSIZEW    
 
 *-----------ROx Memory--------------------------------
 *Description: Decode ROx MEMORY Checks for other various information about the opcode 
-DECODEROXMEMORY                  
+DECODEROXMEMORY CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     ROXMEMSIZEW                 
               
  
 *---------Determine Size-------------- 
@@ -369,21 +398,88 @@ ADDISIZEL   MOVE.L  (A0),D2
             
 SUBSIZEB    MOVE.B  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.W  #$8, A0 
-        
-            BRA     ADDASRC
+            ADDA.W  #$2, A0 
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$0, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$40, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$80, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$100, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$140, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$180, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
 
 SUBSIZEW    MOVE.B  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.W  #$4, A0 
         
-            BRA     ADDASRC
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$0, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$40, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$80, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$100, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$140, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$180, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
 
 SUBSIZEL    MOVE.B  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 , BUT WHAT IF SOURCE CAN BE EA TOO!
             ADDA.W  #$8, A0 
         
-            BRA     ADDASRC
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$0, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$40, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$80, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$100, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$140, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$180, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
 
 SUBASIZEW   MOVE.B  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
@@ -456,13 +552,79 @@ ANDSIZEW    MOVE.B  (A0),D2
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.W  #$4, A0 
         
-            BRA     
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$0, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$40, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$80, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$100, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$140, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$180, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
 
 ANDSIZEL    MOVE.B  (A0),D2  
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.W  #$8, A0 
-        
-            *I need to check if SRC has EA. 
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$0, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$40, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$80, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$100, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$140, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$180, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+LSLREGSIZEB     MOVE.B  (A0),D2  
+                MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+                ADDA.W  #$8, A0   
+                
+                BRA LSLREG
+                
+LSLREGSIZEW     MOVE.B  (A0),D2  
+                MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+                ADDA.W  #$8, A0   
+                
+                BRA LSLREG
+               
+LSLREGSIZEL     MOVE.B  (A0),D2  
+                MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+                ADDA.W  #$8, A0   
+                
+                BRA LSLREG
+            
+LSLMEMSIZEW
+
+
             
 MOVEDEST    AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 00000111000000
             CMP.W   #$0, D1   *Checks to see if the size is Dn(Data Register) 
@@ -519,9 +681,9 @@ MOVESRC     AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000001110000
             CMP.W   #$1C0, D1 *Checks Addressing Mode
             BEQ     ADDRESSVALUE  
             
-ANDSRC      AND.W   #$38, D1 *Moves hex value to D1 for Comparison 00000111000000
+EASRC      AND.W   #$38, D1 *Moves hex value to D1 for Comparison 00000111000000
             CMP.W   #$0, D1  *Checks to see if the size is Dn(Data Register) 
-            BEQ     DATAREGSRC  *Goes to Dn Process 
+            BEQ     DATAREG  *Goes to Dn Process 
             
             MOVE.W  D0, D1   *Store temp of D1 into D0 
             AND.W   #$38, D1 
@@ -543,7 +705,7 @@ ANDSRC      AND.W   #$38, D1 *Moves hex value to D1 for Comparison 0000011100000
             CMP.W   #$38, D1 *Checks Addressing Mode
             BEQ     ADDRESSVALUEWITHDATA 
             
-ANDDEST     AND.W   #$38, D1 
+EADEST     AND.W   #$38, D1 
             CMP.W   #$80, D1        *Checks (An)
             BEQ     INDIRECTADDR
         
@@ -720,6 +882,7 @@ LEASRC      MOVE.W  D0, D1   *Store temp of D1 into D0
             CMP.W   #$38, D1 *Checks Addressing Mode
             BEQ     ADDRESSVALUE
             
+
 CLR         CMP.W   #$0, D1  *Checks to see if the size is Dn(Data Register) 
             BEQ     DATAREG  *Goes to Dn Process 
             
@@ -769,7 +932,7 @@ ADDIDEST    AND.W   #$38, D1 *Moves hex value to D1 for Comparison 00111000
         
             BRA     ERRORDEST       *Gives error if it's none of the them
         
-MOVEMDEST   MOVE.W  D0, D1   *Store temp of D1 into D0 0010000
+MOVEMDEST   MOVE.W  D0, D1   *Store temp of D1 into D0 0010000          
             AND.W   #$38, D1 *Checks to see if the size is (An)
             CMP.W   #$10, D1    
             BEQ     INDIRECTADDR
@@ -786,14 +949,24 @@ MOVEMDEST   MOVE.W  D0, D1   *Store temp of D1 into D0 0010000
         
             BRA     ERRORDEST       *Gives error if it's none of the them   
             
-
+LSLREG          AND.W   #$20,D1       *000 dr 00 1 00000
+                CMP.W   #$0,D1
+                BEQ     DATADN
+               
+                MOVE.W  D0, D1
+                AND.W   #$20,D1 
+                CMP.W   #$20,D1 
+                BEQ     DNDN
         
 MOVEDATAREG     MOVE.W  D0, D1      *Moves value to D1 just incase. 
                 AND.W   #$7,D1      *Isolates the MODE 
                 MOVE.W  D1, D3
                 MOVE.B  #$0, D6
                 BRA MOVESRC
-                
+          
+DATADN          
+
+DNDN      
             
 MOVEINDIRECTADDR    MOVE.W D0,D1 
                     AND.W   #$7,D1  *Isolates the MODE 
@@ -867,6 +1040,7 @@ MOVEADDRESSVALUESRC MOVE.W  D0, D1
                     BEQ     MOVEADDRLSRC
                 
                     BRA     ERRORADDRESS
+                    
                 
 DATAREG         MOVE.W  D0, D1      *Moves value to D1 just incase. 
                 AND.W   #$7,D1      *Isolates the MODE 
