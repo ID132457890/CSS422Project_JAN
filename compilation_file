@@ -23,7 +23,7 @@ LOOP
     
     *Increase the address by 2, since that part has been read
     ADDA.W       #$2, A0
-    
+  
     JSR         CHECK1100    *Check for AND or MULS
     JSR         CHECK0000   *Check for ANDI, ADDI, BCHG, CMPI or MOVE  initial
     JSR         CHECK1110 *Check for LSx,ASx,ROx
@@ -34,7 +34,10 @@ LOOP
     JSR         CHECK1001 *Check for SUB or SUBA
     JSR         CHECK1000 *Check for DIVS 
     JSR         CHECK0100 *Check for JSR,RTS,NOP,MOVEM,LEA,CLR
-   
+    JSR         PRINTEVERYTHING
+    
+PRINTEVERYTHING
+
     MOVE.B  #14, D0
     TRAP    #15
     
@@ -499,7 +502,7 @@ CHECK1100       AND.W   #$F000, D1      *Isolates the first 4 spaces
                 
                 BEQ     CHECKANDMULS    *If equal, then go check if it's AND or MULS
                 
-                RTS
+                RTS     
             
 CHECKANDMULS    MOVE.W  D0, D1          *Move the original opcode to D1 since we need original
                 AND.W   #$1C0, D1       *Isolate spaces 8 to 6
@@ -530,6 +533,8 @@ OPAND           LEA     ANDMESSAGE, A1  *Store the AND message
                 
                 CMP.W   #$180, D1       *If OPMODE 110
                 BEQ     SIZEL           *If yes, it's long
+                
+                JSR DECODEAND           *Decodes AND Opcode 
                 
                 RTS   
                 
@@ -2259,17 +2264,22 @@ DATAREG         MOVE.W  D0, D1      *Moves value to D1 just incase.
                 AND.W   #$7,D1      *Isolates the MODE 
                 MOVE.W  D1, D3
                 MOVE.B  #$0, D6
-                BRA MOVESRC
+                
+                JSR     PRINTEVERYTHING
             
 DIRECTADDR      MOVE.W D0,D1 
                 AND.W   #$7,D1  *Isolates the MODE 
                 MOVE.W  D1, D3
                 MOVE.B  #$1, D6
+                
+                JSR     PRINTEVERYTHING
 
 INDIRECTADDR    MOVE.W D0,D1 
                 AND.W   #$7,D1  *Isolates the MODE 
                 MOVE.W  D1, D3
                 MOVE.B  #$3, D6
+                
+                JSR     PRINTEVERYTHING
                 
 
 POSTADDR        MOVE.W D0,D1 
@@ -2277,10 +2287,14 @@ POSTADDR        MOVE.W D0,D1
                 MOVE.W  D1, D3
                 MOVE.B  #$4, D6
                 
+                JSR     PRINTEVERYTHING
+                
 PREADDR         MOVE.W D0,D1 
                 AND.W   #$7,D1  *Isolates the MODE 
                 MOVE.W  D1, D3
                 MOVE.B  #$5, D6
+                
+                JSR     PRINTEVERYTHING
         
 ADDRESSVALUE    MOVE.W  D0, D1
                 AND.W   #$7, D1
@@ -2291,6 +2305,7 @@ ADDRESSVALUE    MOVE.W  D0, D1
                 CMP.W   #$1, D1
                 BEQ     ADDRL
                 
+                JSR     PRINTEVERYTHING
                 BRA     ERRORADDRESS
          
 ADDRESSVALUEWITHDATA
@@ -2306,6 +2321,7 @@ ADDRESSVALUEWITHDATA
                 CMP.W   #$8, D1
                 BEQ     ADDRD
                 
+                JSR     PRINTEVERYTHING
                 BRA     ERRORADDRESS
 
 ADDRW           MOVE.W  (A0),D3
@@ -2369,6 +2385,7 @@ ERRORADDRESS
 *~Font size~10~
 *~Tab type~1~
 *~Tab size~4~
+
 
 
 
