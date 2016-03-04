@@ -23,7 +23,7 @@ LOOP
     
     *Increase the address by 2, since that part has been read
     ADDA.W       #$2, A0
-  
+    
     JSR         CHECK1100    *Check for AND or MULS
     JSR         CHECK0000   *Check for ANDI, ADDI, BCHG, CMPI or MOVE  initial
     JSR         CHECK1110 *Check for LSx,ASx,ROx
@@ -34,10 +34,7 @@ LOOP
     JSR         CHECK1001 *Check for SUB or SUBA
     JSR         CHECK1000 *Check for DIVS 
     JSR         CHECK0100 *Check for JSR,RTS,NOP,MOVEM,LEA,CLR
-    JSR         PRINTEVERYTHING
-    
-PRINTEVERYTHING
-
+   
     MOVE.B  #14, D0
     TRAP    #15
     
@@ -149,7 +146,7 @@ ANEA            LEA         ANMESSAGE, A1       *Show A
                 MOVE.B      #14, D0
                 TRAP        #15
                 
-                MOVE.B      D2, D1              *Show 
+                MOVE.B      D2, D1              *Show n
                 MOVE.B      #3, D0
                 TRAP        #15
                 
@@ -248,12 +245,9 @@ DATAEA          ROL.L       #$4, D2             *Shift left to right position
 *Description: This branch handles the input part of the disassmbler
 *--------------------------------------------------------------------------------
 
-INPUT           LEA         INPUTMESSAGELINE1, A1    *Show the first line
+INPUT           LEA         INPUTMESSAGE, A1    *Show the first line
                 MOVE.B      #13, D0
-                TRAP        #15 
-
-                LEA         INPUTMESSAGELINE2, A1    *Show the second line
-                TRAP        #15       
+                TRAP        #15      
 
 INPUTLOOP       MOVE.B      #5, D0              *Wait for user input (character)
                 TRAP        #15
@@ -505,7 +499,7 @@ CHECK1100       AND.W   #$F000, D1      *Isolates the first 4 spaces
                 
                 BEQ     CHECKANDMULS    *If equal, then go check if it's AND or MULS
                 
-                RTS     
+                RTS
             
 CHECKANDMULS    MOVE.W  D0, D1          *Move the original opcode to D1 since we need original
                 AND.W   #$1C0, D1       *Isolate spaces 8 to 6
@@ -536,8 +530,6 @@ OPAND           LEA     ANDMESSAGE, A1  *Store the AND message
                 
                 CMP.W   #$180, D1       *If OPMODE 110
                 BEQ     SIZEL           *If yes, it's long
-                
-                JSR DECODEAND           *Decodes AND Opcode 
                 
                 RTS   
                 
@@ -1254,8 +1246,7 @@ BYTEMESSAGE     DC.B    '.B', 0
 WORDMESSAGE     DC.B    '.W', 0
 LONGMESSAGE     DC.B    '.L', 0
 
-INPUTMESSAGELINE1    DC.B    'Welcome to JAN disassembler. Please type your addresses in this format:',$0D,$0A, 0
-INPUTMESSAGELINE2    DC.B    ' "starting address", "ending address". (period included)', 0
+INPUTMESSAGE    DC.B    'Welcome to JAN disassembler. Please type your addresses in this format: "starting address", "ending address". (period included)', 0
 INPUTMESSAGE2   DC.B    'Now please type your ending address in hex format. Write a . (period) when done.', 0
 
 SPACEMESSAGE    DC.B    '           ', 0
@@ -1286,7 +1277,8 @@ ANMINUSOPENMESSAGE DC.B '-(', 0
 
 
 
-*START Decode EA Section-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+*-----------DECODE EA----------------------------------------------------------------------------------
 
 
 *-----------NOP--------------------------------
@@ -1308,7 +1300,8 @@ DECODEMOVE
 
 *-----------MOVEQ--------------------------------
 *Description: Decode MOVE Checks for other various information about the opcode 
-DECODEMOVEQ     BEQ     MOVEQSIZEL
+DECODEMOVEQ        
+                BEQ     MOVEQSIZEL
                 
 *-----------MOVEM--------------------------------
 *Description: Decode MOVEM Checks for other various information about the opcode 
@@ -1520,11 +1513,13 @@ DECODELSLMEMORY
 
 *-----------ASx Memory--------------------------------
 *Description: Decode ASx MEMORY Checks for other various information about the opcode 
-DECODEASXMEMORY    
+DECODEASXMEMORY CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     ASXMEMSIZEW    
 
 *-----------ROx Memory--------------------------------
 *Description: Decode ROx MEMORY Checks for other various information about the opcode 
-DECODEROXMEMORY                  
+DECODEROXMEMORY CMP.B   #$1,D7     *Compare if the size is a word 
+                BEQ     ROXMEMSIZEW                 
               
  
 *---------Determine Size-------------- 
@@ -1582,19 +1577,6 @@ SIXBITSRCONLYSIZEL          MOVE.B  (A0),D2
                             ADDA.W  #$2, A0 
         
                             BRA     SIXBITSRCONLY *Branches to destination
-
-ASRREGSIZEB
-
-ASRREGSIZEW
-
-ASRREGSIZEL
-
-ROLREGSIZEB
-
-ROLREGSIZEW
-
-ROLREGSIZEL
-
 
 MOVESIZEB   MOVE.B  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
@@ -1689,21 +1671,88 @@ ADDISIZEL   MOVE.L  (A0),D2
             
 SUBSIZEB    MOVE.B  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.W  #$8, A0 
-        
-            BRA     ADDASRC
+            ADDA.W  #$2, A0 
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$0, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$40, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$80, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$100, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$140, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$180, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
 
 SUBSIZEW    MOVE.B  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.W  #$4, A0 
         
-            BRA     ADDASRC
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$0, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$40, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$80, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$100, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$140, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$180, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
 
 SUBSIZEL    MOVE.B  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 , BUT WHAT IF SOURCE CAN BE EA TOO!
             ADDA.W  #$8, A0 
         
-            BRA     ADDASRC
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$0, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$40, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$80, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EASRC
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$100, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$140, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
+            CMP.W   #$180, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     EADEST
+            
 
 SUBASIZEW   MOVE.B  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
@@ -1778,27 +1827,27 @@ ANDSIZEW    MOVE.B  (A0),D2
         
             AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
             CMP.W   #$0, D1   *Checks to see if the size is Dn(Data Register) 
-            BEQ     ANDSRC
+            BEQ     EASRC
             
             AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
             CMP.W   #$40, D1   *Checks to see if the size is Dn(Data Register) 
-            BEQ     ANDSRC
+            BEQ     EASRC
             
             AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
             CMP.W   #$80, D1   *Checks to see if the size is Dn(Data Register) 
-            BEQ     ANDSRC
+            BEQ     EASRC
             
             AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
             CMP.W   #$100, D1   *Checks to see if the size is Dn(Data Register) 
-            BEQ     ANDDEST
+            BEQ     EADEST
             
             AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
             CMP.W   #$140, D1   *Checks to see if the size is Dn(Data Register) 
-            BEQ     ANDDEST
+            BEQ     EADEST
             
             AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
             CMP.W   #$180, D1   *Checks to see if the size is Dn(Data Register) 
-            BEQ     ANDDEST
+            BEQ     EADEST
 
 ANDSIZEL    MOVE.B  (A0),D2  
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
@@ -1806,27 +1855,27 @@ ANDSIZEL    MOVE.B  (A0),D2
             
             AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
             CMP.W   #$0, D1   *Checks to see if the size is Dn(Data Register) 
-            BEQ     ANDSRC
+            BEQ     EASRC
             
             AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
             CMP.W   #$40, D1   *Checks to see if the size is Dn(Data Register) 
-            BEQ     ANDSRC
+            BEQ     EASRC
             
             AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
             CMP.W   #$80, D1   *Checks to see if the size is Dn(Data Register) 
-            BEQ     ANDSRC
+            BEQ     EASRC
             
             AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
             CMP.W   #$100, D1   *Checks to see if the size is Dn(Data Register) 
-            BEQ     ANDDEST
+            BEQ     EADEST
             
             AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
             CMP.W   #$140, D1   *Checks to see if the size is Dn(Data Register) 
-            BEQ     ANDDEST
+            BEQ     EADEST
             
             AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
             CMP.W   #$180, D1   *Checks to see if the size is Dn(Data Register) 
-            BEQ     ANDDEST
+            BEQ     EADEST
             
 LSLREGSIZEB     MOVE.B  (A0),D2  
                 MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
@@ -1847,6 +1896,8 @@ LSLREGSIZEL     MOVE.B  (A0),D2
                 BRA LSLREG
             
 LSLMEMSIZEW
+
+
             
 MOVEDEST    AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 00000111000000
             CMP.W   #$0, D1   *Checks to see if the size is Dn(Data Register) 
@@ -1903,7 +1954,7 @@ MOVESRC     AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000001110000
             CMP.W   #$1C0, D1 *Checks Addressing Mode
             BEQ     ADDRESSVALUE  
             
-ANDSRC      AND.W   #$38, D1 *Moves hex value to D1 for Comparison 00000111000000
+EASRC      AND.W   #$38, D1 *Moves hex value to D1 for Comparison 00000111000000
             CMP.W   #$0, D1  *Checks to see if the size is Dn(Data Register) 
             BEQ     DATAREG  *Goes to Dn Process 
             
@@ -1927,7 +1978,7 @@ ANDSRC      AND.W   #$38, D1 *Moves hex value to D1 for Comparison 0000011100000
             CMP.W   #$38, D1 *Checks Addressing Mode
             BEQ     ADDRESSVALUEWITHDATA 
             
-ANDDEST     AND.W   #$38, D1 
+EADEST     AND.W   #$38, D1 
             CMP.W   #$80, D1        *Checks (An)
             BEQ     INDIRECTADDR
         
@@ -2268,22 +2319,17 @@ DATAREG         MOVE.W  D0, D1      *Moves value to D1 just incase.
                 AND.W   #$7,D1      *Isolates the MODE 
                 MOVE.W  D1, D3
                 MOVE.B  #$0, D6
-                
-                JSR     PRINTEVERYTHING
+                BRA MOVESRC
             
 DIRECTADDR      MOVE.W D0,D1 
                 AND.W   #$7,D1  *Isolates the MODE 
                 MOVE.W  D1, D3
                 MOVE.B  #$1, D6
-                
-                JSR     PRINTEVERYTHING
 
 INDIRECTADDR    MOVE.W D0,D1 
                 AND.W   #$7,D1  *Isolates the MODE 
                 MOVE.W  D1, D3
                 MOVE.B  #$3, D6
-                
-                JSR     PRINTEVERYTHING
                 
 
 POSTADDR        MOVE.W D0,D1 
@@ -2291,14 +2337,10 @@ POSTADDR        MOVE.W D0,D1
                 MOVE.W  D1, D3
                 MOVE.B  #$4, D6
                 
-                JSR     PRINTEVERYTHING
-                
 PREADDR         MOVE.W D0,D1 
                 AND.W   #$7,D1  *Isolates the MODE 
                 MOVE.W  D1, D3
                 MOVE.B  #$5, D6
-                
-                JSR     PRINTEVERYTHING
         
 ADDRESSVALUE    MOVE.W  D0, D1
                 AND.W   #$7, D1
@@ -2309,7 +2351,6 @@ ADDRESSVALUE    MOVE.W  D0, D1
                 CMP.W   #$1, D1
                 BEQ     ADDRL
                 
-                JSR     PRINTEVERYTHING
                 BRA     ERRORADDRESS
          
 ADDRESSVALUEWITHDATA
@@ -2325,7 +2366,6 @@ ADDRESSVALUEWITHDATA
                 CMP.W   #$8, D1
                 BEQ     ADDRD
                 
-                JSR     PRINTEVERYTHING
                 BRA     ERRORADDRESS
 
 ADDRW           MOVE.W  (A0),D3
@@ -2368,8 +2408,12 @@ ERRORDEST
 ERRORADDRESS
                 *This will be responsible for printing out the error
 
+*-----------DECODE EA----------------------------------------------------------------------------------
 
-*END Decode EA Section------------------------------------------------------------------------------------------------------------------------------------------
+    SIMHALT             ; halt simulator
+
+* Put variables and constants here
+INVALIDERRORMESSAGE     DC.B 'Not valid', 0
 
     END    START        ; last line of source
    
@@ -2389,8 +2433,6 @@ ERRORADDRESS
 *~Font size~10~
 *~Tab type~1~
 *~Tab size~4~
-
-
 
 
 
