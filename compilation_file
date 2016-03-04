@@ -34,9 +34,12 @@ LOOP
     JSR         CHECK1001 *Check for SUB or SUBA
     JSR         CHECK1000 *Check for DIVS 
     JSR         CHECK0100 *Check for JSR,RTS,NOP,MOVEM,LEA,CLR
+    
    
     MOVE.B  #14, D0
     TRAP    #15
+    
+    JSR     DECODEAND
     
     JSR         PRINTSIZES  *Print the sizes
     
@@ -1710,7 +1713,7 @@ CLRSIZEW    MOVE.B  (A0),D2
             ADDA.W  #$4, A0 
         
             BRA     CLR
-
+            
 CLRSIZEL    MOVE.B  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.W  #$8, A0 
@@ -1720,6 +1723,7 @@ CLRSIZEL    MOVE.B  (A0),D2
 ANDSIZEB    MOVE.B  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.W  #$2, A0 
+            BEQ     ANDSRC
             
             AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 000111000000
             CMP.W   #$0, D1   *Checks to see if the size is Dn(Data Register) 
@@ -2255,7 +2259,7 @@ DATAREG         MOVE.W  D0, D1      *Moves value to D1 just incase.
                 AND.W   #$7,D1      *Isolates the MODE 
                 MOVE.W  D1, D3
                 MOVE.B  #$0, D6
-                BRA MOVESRC
+                RTS     LOOP    *goes back to loop 
             
 DIRECTADDR      MOVE.W D0,D1 
                 AND.W   #$7,D1  *Isolates the MODE 
