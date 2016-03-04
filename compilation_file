@@ -149,7 +149,7 @@ ANEA            LEA         ANMESSAGE, A1       *Show A
                 MOVE.B      #14, D0
                 TRAP        #15
                 
-                MOVE.B      D2, D1              *Show n
+                MOVE.B      D2, D1              *Show 
                 MOVE.B      #3, D0
                 TRAP        #15
                 
@@ -248,9 +248,12 @@ DATAEA          ROL.L       #$4, D2             *Shift left to right position
 *Description: This branch handles the input part of the disassmbler
 *--------------------------------------------------------------------------------
 
-INPUT           LEA         INPUTMESSAGE, A1    *Show the first line
+INPUT           LEA         INPUTMESSAGELINE1, A1    *Show the first line
                 MOVE.B      #13, D0
-                TRAP        #15      
+                TRAP        #15 
+
+                LEA         INPUTMESSAGELINE2, A1    *Show the second line
+                TRAP        #15       
 
 INPUTLOOP       MOVE.B      #5, D0              *Wait for user input (character)
                 TRAP        #15
@@ -1251,7 +1254,8 @@ BYTEMESSAGE     DC.B    '.B', 0
 WORDMESSAGE     DC.B    '.W', 0
 LONGMESSAGE     DC.B    '.L', 0
 
-INPUTMESSAGE    DC.B    'Welcome to JAN disassembler. Please type your addresses in this format: "starting address", "ending address". (period included)', 0
+INPUTMESSAGELINE1    DC.B    'Welcome to JAN disassembler. Please type your addresses in this format:',$0D,$0A, 0
+INPUTMESSAGELINE2    DC.B    ' "starting address", "ending address". (period included)', 0
 INPUTMESSAGE2   DC.B    'Now please type your ending address in hex format. Write a . (period) when done.', 0
 
 SPACEMESSAGE    DC.B    '           ', 0
