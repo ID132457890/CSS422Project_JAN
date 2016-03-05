@@ -53,6 +53,10 @@ LOOP
     
     JSR         CLEARALL
     
+    *Start next iteration of loop on new line
+    LEA NEWLINE, A1
+    TRAP #15
+
     BRA         LOOP        *If not, then loop back            
     
     SIMHALT   
@@ -1148,16 +1152,17 @@ CHECKOPS        *******Check for NOP and RTS since they are constant
                 CMP.W #$100, D1 *check if bit 8 is 1 
                 BEQ OPLEA
               
-                ******check for MOVEM*****
-                MOVE.W D0,D1 *RESTORE OPCODE
-                AND.W #$30,D1  *mask every bit but the 8th
-                CMP.W #$30, D1 *check if bit 8 is 1 
-                BEQ OPMOVEM
-    
+                ******check for JSR
                 MOVE.W D0,D1 *restore opcode
-                AND.W #$300,D1 *check if th 9 is 1 and 8 is 1
-                CMP.W #$300,D1
+                AND.W #$280,D1 *check if th 9 is 1 and 7 is 1
+                CMP.W #$280,D1
                 BEQ OPJSR *check the remaing op codes
+                
+                ******Check for MOVEM*******
+                MOVE.W D0,D1 *RESTORE OPCODE
+                AND.W #$200,D1 *maks every bit but the 8th
+                CMP.W #$200,D1 * CHECK IF THE BIT 8 IS 1
+                BEQ OPMOVEM
                 
                   ******check for CLR********
                 MOVE.W D0,D1 *RESTORE OPCODE         
@@ -3050,3 +3055,8 @@ ANMINUSOPENMESSAGE DC.B '-(', 0
 
 
 
+
+*~Font name~Courier New~
+*~Font size~10~
+*~Tab type~1~
+*~Tab size~4~
