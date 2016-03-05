@@ -2896,7 +2896,7 @@ CMPDATA     CMP.B   #$1,D7     *Compare if the size is a byte
 
 CMPSIZEB    MOVE.B  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.L  #$1, A0 
+            ADDA.L  #$2, A0 
         
             BRA     CMPDNDEST *Branches to destination
 
@@ -2997,7 +2997,8 @@ BYTEMESSAGE     DC.B    '.B', 0
 WORDMESSAGE     DC.B    '.W', 0
 LONGMESSAGE     DC.B    '.L', 0
 
-INPUTMESSAGE    DC.B    'Welcome to JAN disassembler. Please type your addresses in this format:',$0D,$0A, 0
+INPUTMESSAGE    DC.B    'Welcome to JAN disassembler. Please type your addresses in this format:',$0D,$0A, 0
+
 INPUTMESSAGE2   DC.B    '"starting address", "ending address". (period included)',0
 
 
@@ -3047,6 +3048,7 @@ ANMINUSOPENMESSAGE DC.B '-(', 0
 *~Font size~10~
 *~Tab type~1~
 *~Tab size~4~
+
 
 
 
