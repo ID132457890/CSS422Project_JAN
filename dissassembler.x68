@@ -35,10 +35,16 @@ LOOP
     JSR         CHECK1000 *Check for DIVS 
     JSR         CHECK0100 *Check for JSR,RTS,NOP,MOVEM,LEA,CLR
    
+    MOVE.L      D0, D2          *Backup opcode
+   
     MOVE.B  #14, D0
     TRAP    #15
     
     JSR         PRINTSIZES  *Print the sizes
+    
+    MOVE.L      D2, D0      *restore opcode
+    
+    JSR         CHECKEAS    *Checks the EAs
     
     *JSR         PRINTSOURCE *Print source EA
     
@@ -1211,6 +1217,1743 @@ SIZEW           MOVE.B  #$2, D7
 SIZEL           MOVE.B  #$3, D7
                 RTS
 *-------------------------------------OPCode sizes end---------------------------------------------------
+
+
+
+
+
+
+
+
+*-------------------------------------EA Code begins-----------------------------------------------------
+CHECKEAS        CMP.B   #$1, D4
+                BEQ     MOVEEA
+                
+                CMP.B   #$2, D4
+                BEQ     MOVEQEA
+                
+                *CMP.B   #$3, D4
+                *BEQ     MOVEAMEA
+                
+                CMP.B   #$4, D4
+                BEQ     ADDEA
+                
+                CMP.B   #$5, D4
+                BEQ     ADDAEA
+                
+                *CMP.B   #$6, D4
+                *BEQ     ADDIEA
+
+                CMP.B   #$7, D4
+                BEQ     SUBEA
+                
+                CMP.B   #$9, D4
+                BEQ     MULSEA
+                
+                CMP.B   #$10, D4
+                BEQ     DIVUEA
+                
+                CMP.B   #$11, D4
+                BEQ     LEAEA
+                
+                CMP.B   #$12, D4
+                BEQ     CLREA
+                
+                CMP.B   #$13, D4
+                BEQ     ANDEA
+                
+                CMP.B   #$15, D4
+                BEQ     LSREA
+                
+                CMP.B   #$16, D4
+                BEQ     ASREA
+                
+                CMP.B   #$17, D4
+                BEQ     ROREA
+                
+                CMP.B   #$19, D4
+                BEQ     CMPEA
+                
+                *CMP.B   #$21, D4
+                *BEQ     BCCEA
+                
+                CMP.B   #$22, D4
+                BEQ     JSREA
+                
+                
+                
+
+
+MOVEEA      MOVE.L  D0, D1
+            AND.L   #$38, D1    *Isolate source mode
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     MOVEDATAREG
+            
+            CMP.L   #$8, D1     *Check if 001
+            BEQ     MOVEADDRREG
+            
+            CMP.L   #$10, D1    *Check if 010
+            BEQ     MOVEINADDRREG
+            
+            CMP.L   #$18, D1    *Check if 011
+            BEQ     MOVEPLUSADDRREG
+            
+            CMP.L   #$20, D1    *Check if 100
+            BEQ     MOVEMINUSADDRREG
+            
+            CMP.L   #$38, D1     *Check if 111
+            BEQ     MOVEADDRESSDATA
+            
+MOVEDATAREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of Dn
+            MOVE.B  #$0, D5     *Move type of source
+            
+            BRA     MOVEDEST
+            
+MOVEADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of An
+            MOVE.B  #$1, D5     *Move type of source
+            
+            BRA     MOVEDEST
+            
+MOVEINADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$3, D5     *Move type of source
+            
+            BRA     MOVEDEST
+            
+MOVEPLUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$4, D5     *Move type of source
+            
+            BRA     MOVEDEST
+            
+MOVEMINUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$5, D5     *Move type of source
+            
+            BRA     MOVEDEST
+            
+MOVEADDRESSDATA MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     MOVEADDRW
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     MOVEADDRL
+            
+            CMP.L   #$4, D1     *Check if 100
+            BEQ     MOVEDATA
+            
+MOVEADDRW   MOVE.W  (A0),D2     *Move addr
+            MOVE.B  #$6, D5     *Store type
+            ADDA.L  #$2, A0 
+            
+            BRA     MOVEDEST
+
+MOVEADDRL   MOVE.L  (A0),D2     *Move addr
+            MOVE.B  #$7, D5     *Store type
+            ADDA.L  #$4, A0 
+            
+            BRA     MOVEDEST
+            
+MOVEDATA    CMP.B   #$1,D7     *Compare if the size is a byte  
+            BEQ     MOVESIZEB
+    
+            CMP.B   #$2,D7     *Compare if the size is a word 
+            BEQ     MOVESIZEW
+    
+            CMP.B   #$3,D7     *Compare if the size is a long 
+            BEQ     MOVESIZEL 
+
+MOVESIZEB   MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$1, A0 
+        
+            BRA     MOVEDEST    *Branches to destination
+
+MOVESIZEW   MOVE.W  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$2, A0 
+        
+            BRA     MOVEDEST    *Branches to destination
+
+MOVESIZEL   MOVE.L  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$4, A0 
+        
+            BRA     MOVEDEST    *Branches to destination
+
+MOVEDEST    MOVE.W  D0, D1
+            AND.W   #$1C0, D1 *Moves hex value to D1 for Comparison 00000111000000
+            CMP.W   #$0, D1   *Checks to see if the size is Dn(Data Register) 
+            BEQ     MOVEDATAREGD  *Goes to Dn Process 
+        
+            CMP.W   #$80, D1   *Checks (An)
+            BEQ     MOVEINADDRD
+        
+            CMP.W   #$18, D1 *Checks (An)+
+            BEQ     MOVEPOSTADDRD
+        
+            CMP.W   #$100, D1 *Checks -(An)
+            BEQ     MOVEPREADDRD
+        
+            CMP.W   #$1C0, D1 *Checks Addressing Mode
+            BEQ     MOVEADDRD
+            
+MOVEDATAREGD    MOVE.W  D0, D1
+                AND.W   #$E00, D1   *Isolate register
+                ASR.L   #8, D1
+                ASR.L   #1, D1
+                MOVE.W  D1, D3
+                MOVE.B  #$0, D6
+                
+                RTS
+                
+MOVEINADDRD     MOVE.W  D0, D1
+                AND.W   #$E00, D1   *Isolate register
+                ASR.L   #8, D1
+                ASR.L   #1, D1
+                MOVE.W  D1, D3
+                MOVE.B  #$1, D6
+                
+                RTS
+                
+MOVEPOSTADDRD   MOVE.W  D0, D1
+                AND.W   #$E00, D1   *Isolate register
+                ASR.L   #8, D1
+                ASR.L   #1, D1
+                MOVE.W  D1, D3
+                MOVE.B  #$3, D6
+                
+                RTS
+                
+MOVEPREADDRD    MOVE.W  D0, D1
+                AND.W   #$E00, D1   *Isolate register
+                ASR.L   #8, D1
+                ASR.L   #1, D1
+                MOVE.W  D1, D3
+                MOVE.B  #$4, D6
+                
+                RTS
+                
+MOVEADDRD       MOVE.W  D0, D1
+                AND.W   #$E00, D1   *Isolate register
+                
+                CMP.W   #$0, D1     *Check if 000
+                BEQ     MOVEADDRWD  
+                
+                CMP.W   #$200, D1     *Check if 001
+                BEQ     MOVEADDRLD  
+                
+MOVEADDRWD      MOVE.W  (A0), D3
+                MOVE.B  #$6, D6
+                ADDA.L  #$2, A0
+                
+                RTS
+                
+MOVEADDRLD      MOVE.L  (A0), D3
+                MOVE.B  #$7, D6
+                ADDA.L  #$4, A0
+                
+                RTS
+
+
+
+
+
+
+
+MOVEQEA         MOVE.L  D0, D1
+                AND.W   #$FF, D1    *Isolate data
+                MOVE.W  D1, D2
+                MOVE.B  #$8, D5
+                
+                MOVE.L  D0, D1
+                AND.W   #$E00, D1    *Isolate register
+                ASR.L   #8, D1
+                ASR.L   #1, D1
+                MOVE.W  D1, D3
+                MOVE.B  #$0, D6
+                
+                RTS
+                
+                
+                
+                
+                
+                
+                
+ADDEA           MOVE.W  D0, D1
+                AND.W   #$1C0, D1     *Isolate opmode
+                
+                CMP.W   #$100, D1     *Check if < 100
+                BLT     ADDEADN
+                
+                BRA     ADDDNEA
+                
+ADDDNEA         MOVE.W  D0, D1
+                AND.W   #$E00, D1   *Isolate register
+                ASR.L   #8, D1
+                ASR.L   #1, D1
+                MOVE.W  D1, D2      *Move register to d2
+                MOVE.B  #$0, D5
+                
+                BRA     ADDDNEADEST
+                
+ADDDNEADEST     MOVE.L  D0, D1
+                AND.L   #$38, D1    *Isolate mode
+            
+                CMP.L   #$10, D1    *Check if 010
+                BEQ     ADDINADDRREGD
+            
+                CMP.L   #$18, D1    *Check if 011
+                BEQ     ADDPLUSADDRREGD
+            
+                CMP.L   #$20, D1    *Check if 100
+                BEQ     ADDMINUSADDRREGD
+            
+                CMP.L   #$38, D1     *Check if 111
+                BEQ     ADDADDRESSD
+                
+            
+ADDINADDRREGD MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D3      *Move value of an
+            MOVE.B  #$3, D6     *Move type of source
+            
+            RTS
+            
+ADDPLUSADDRREGD MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D3      *Move value of an
+            MOVE.B  #$4, D6     *Move type of source
+            
+            RTS
+            
+ADDMINUSADDRREGD MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D3      *Move value of an
+            MOVE.B  #$5, D6     *Move type of source
+            
+            RTS
+            
+ADDADDRESSD MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     ADDADDRWD
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     ADDADDRLD
+            
+ADDADDRWD   MOVE.W  (A0),D3     *Move addr
+            MOVE.B  #$6, D6     *Store type
+            ADDA.L  #$2, A0 
+            
+            RTS
+
+ADDADDRLD   MOVE.L  (A0),D3     *Move addr
+            MOVE.B  #$7, D6     *Store type
+            ADDA.L  #$4, A0
+            
+            RTS
+                
+ADDEADN     MOVE.L  D0, D1
+            AND.L   #$38, D1    *Isolate source mode
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     ADDDATAREG
+            
+            CMP.L   #$8, D1     *Check if 001
+            BEQ     ADDADDRREG
+            
+            CMP.L   #$10, D1    *Check if 010
+            BEQ     ADDINADDRREG
+            
+            CMP.L   #$18, D1    *Check if 011
+            BEQ     ADDPLUSADDRREG
+            
+            CMP.L   #$20, D1    *Check if 100
+            BEQ     ADDMINUSADDRREG
+            
+            CMP.L   #$38, D1     *Check if 111
+            BEQ     ADDADDRESSDATA
+                
+ADDDATAREG  MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of Dn
+            MOVE.B  #$0, D5     *Move type of source
+            
+            BRA     ADDDNDEST
+            
+ADDADDRREG  MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of An
+            MOVE.B  #$1, D5     *Move type of source
+            
+            BRA     ADDDNDEST
+            
+ADDINADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$3, D5     *Move type of source
+            
+            BRA     ADDDNDEST
+            
+ADDPLUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$4, D5     *Move type of source
+            
+            BRA     ADDDNDEST
+            
+ADDMINUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$5, D5     *Move type of source
+            
+            BRA     ADDDNDEST
+            
+ADDADDRESSDATA MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     ADDADDRW
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     ADDADDRL
+            
+            CMP.L   #$4, D1     *Check if 100
+            BEQ     ADDDATA
+            
+ADDADDRW    MOVE.W  (A0),D2     *Move addr
+            MOVE.B  #$6, D5     *Store type
+            ADDA.L  #$2, A0 
+            
+            BRA     ADDDNDEST
+
+ADDADDRL    MOVE.L  (A0),D2     *Move addr
+            MOVE.B  #$7, D5     *Store type
+            ADDA.L  #$4, A0 
+            
+            BRA     ADDDNDEST
+            
+ADDDATA     CMP.B   #$1,D7     *Compare if the size is a byte  
+            BEQ     ADDSIZEB
+    
+            CMP.B   #$2,D7     *Compare if the size is a word 
+            BEQ     ADDSIZEW
+    
+            CMP.B   #$3,D7     *Compare if the size is a long 
+            BEQ     ADDSIZEL 
+
+ADDSIZEB    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$1, A0 
+        
+            BRA     ADDDNDEST *Branches to destination
+
+ADDSIZEW    MOVE.W  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$2, A0 
+        
+            BRA     ADDDNDEST *Branches to destination
+
+ADDSIZEL    MOVE.L  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$4, A0 
+        
+            BRA     ADDDNDEST *Branches to destination
+            
+ADDDNDEST   MOVE.W  D0, D1
+            AND.W   #$E00, D1   *Isolate register
+            ASR.L   #8, D1
+            ASR.L   #1, D1
+            MOVE.W  D1, D3      *Move register to d3
+            MOVE.B  #$0, D6
+            
+            RTS
+            *Check add size
+            
+            
+            
+            
+ADDAEA      MOVE.L  D0, D1
+            AND.L   #$38, D1    *Isolate source mode
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     ADDADATAREG
+            
+            CMP.L   #$8, D1     *Check if 001
+            BEQ     ADDAADDRREG
+            
+            CMP.L   #$10, D1    *Check if 010
+            BEQ     ADDAINADDRREG
+            
+            CMP.L   #$18, D1    *Check if 011
+            BEQ     ADDAPLUSADDRREG
+            
+            CMP.L   #$20, D1    *Check if 100
+            BEQ     ADDAMINUSADDRREG
+            
+            CMP.L   #$38, D1     *Check if 111
+            BEQ     ADDAADDRESSDATA
+            
+ADDADATAREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of Dn
+            MOVE.B  #$0, D5     *Move type of source
+            
+            BRA     ADDADEST 
+            
+ADDAADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of An
+            MOVE.B  #$1, D5     *Move type of source
+            
+            BRA     ADDADEST 
+            
+ADDAINADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$3, D5     *Move type of source
+            
+            BRA     ADDADEST 
+            
+ADDAPLUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$4, D5     *Move type of source
+            
+            BRA     ADDADEST 
+            
+ADDAMINUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$5, D5     *Move type of source
+            
+            BRA     ADDADEST 
+            
+ADDAADDRESSDATA MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     ADDAADDRW
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     ADDAADDRL
+            
+            CMP.L   #$4, D1     *Check if 100
+            BEQ     ADDADATA
+            
+ADDAADDRW   MOVE.W  (A0),D2     *Move addr
+            MOVE.B  #$6, D5     *Store type
+            ADDA.L  #$2, A0 
+            
+            BRA     ADDADEST 
+
+ADDAADDRL   MOVE.L  (A0),D2     *Move addr
+            MOVE.B  #$7, D5     *Store type
+            ADDA.L  #$4, A0 
+            
+            BRA     ADDADEST 
+            
+ADDADATA    CMP.B   #$1,D7     *Compare if the size is a byte  
+            BEQ     ADDASIZEB
+    
+            CMP.B   #$2,D7     *Compare if the size is a word 
+            BEQ     ADDASIZEW
+    
+            CMP.B   #$3,D7     *Compare if the size is a long 
+            BEQ     ADDASIZEL 
+
+ADDASIZEB   MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$1, A0 
+        
+            BRA     ADDADEST *Branches to destination
+
+ADDASIZEW   MOVE.W  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$2, A0 
+        
+            BRA     ADDADEST *Branches to destination
+
+ADDASIZEL   MOVE.L  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$4, A0 
+        
+            BRA     ADDADEST 
+
+ADDADEST    MOVE.W  D0, D1
+            AND.W   #$E00, D1   *Isolate register
+            ASR.L   #8, D1
+            ASR.L   #1, D1
+            MOVE.W  D1, D3
+            MOVE.B  #$1, D6
+            
+            RTS
+            
+            
+*ADDIEA      
+            
+            
+            
+            
+SUBEA           MOVE.W  D0, D1
+                AND.W   #$1C0, D1     *Isolate opmode
+                
+                CMP.W   #$100, D1     *Check if < 100
+                BLT     SUBEADN
+                
+                BRA     SUBDNEA
+                
+SUBDNEA         MOVE.W  D0, D1
+                AND.W   #$E00, D1   *Isolate register
+                ASR.L   #8, D1
+                ASR.L   #1, D1
+                MOVE.W  D1, D2      *Move register to d2
+                MOVE.B  #$0, D5
+                
+                BRA     SUBEADEST
+                
+SUBEADEST       MOVE.L  D0, D1
+                AND.L   #$38, D1    *Isolate mode
+            
+                CMP.L   #$10, D1    *Check if 010
+                BEQ     SUBINADDRREGD
+            
+                CMP.L   #$18, D1    *Check if 011
+                BEQ     SUBPLUSADDRREGD
+            
+                CMP.L   #$20, D1    *Check if 100
+                BEQ     SUBMINUSADDRREGD
+            
+                CMP.L   #$38, D1     *Check if 111
+                BEQ     SUBADDRESSD
+                
+            
+SUBINADDRREGD MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D3      *Move value of an
+            MOVE.B  #$3, D6     *Move type of source
+            
+            RTS
+            
+SUBPLUSADDRREGD MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D3      *Move value of an
+            MOVE.B  #$4, D6     *Move type of source
+            
+            RTS
+            
+SUBMINUSADDRREGD MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D3      *Move value of an
+            MOVE.B  #$5, D6     *Move type of source
+            
+            RTS
+            
+SUBADDRESSD MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     SUBADDRWD
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     SUBADDRLD
+            
+SUBADDRWD   MOVE.W  (A0),D3     *Move addr
+            MOVE.B  #$6, D6     *Store type
+            ADDA.L  #$2, A0 
+            
+            RTS
+
+SUBADDRLD   MOVE.L  (A0),D3     *Move addr
+            MOVE.B  #$7, D6     *Store type
+            ADDA.L  #$4, A0
+            
+            RTS
+                
+SUBEADN     MOVE.L  D0, D1
+            AND.L   #$38, D1    *Isolate source mode
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     SUBDATAREG
+            
+            CMP.L   #$8, D1     *Check if 001
+            BEQ     SUBADDRREG
+            
+            CMP.L   #$10, D1    *Check if 010
+            BEQ     SUBINADDRREG
+            
+            CMP.L   #$18, D1    *Check if 011
+            BEQ     SUBPLUSADDRREG
+            
+            CMP.L   #$20, D1    *Check if 100
+            BEQ     SUBMINUSADDRREG
+            
+            CMP.L   #$38, D1     *Check if 111
+            BEQ     SUBADDRESSDATA
+                
+SUBDATAREG  MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of Dn
+            MOVE.B  #$0, D5     *Move type of source
+            
+            BRA     SUBDNDEST
+            
+SUBADDRREG  MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of An
+            MOVE.B  #$1, D5     *Move type of source
+            
+            BRA     SUBDNDEST
+            
+SUBINADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$3, D5     *Move type of source
+            
+            BRA     SUBDNDEST
+            
+SUBPLUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$4, D5     *Move type of source
+            
+            BRA     SUBDNDEST
+            
+SUBMINUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$5, D5     *Move type of source
+            
+            BRA     SUBDNDEST
+            
+SUBADDRESSDATA MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     SUBADDRW
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     SUBADDRL
+            
+            CMP.L   #$4, D1     *Check if 100
+            BEQ     SUBDATA
+            
+SUBADDRW    MOVE.W  (A0),D2     *Move addr
+            MOVE.B  #$6, D5     *Store type
+            ADDA.L  #$2, A0 
+            
+            BRA     SUBDNDEST
+
+SUBADDRL    MOVE.L  (A0),D2     *Move addr
+            MOVE.B  #$7, D5     *Store type
+            ADDA.L  #$4, A0 
+            
+            BRA     SUBDNDEST
+            
+SUBDATA     CMP.B   #$1,D7     *Compare if the size is a byte  
+            BEQ     SUBSIZEB
+    
+            CMP.B   #$2,D7     *Compare if the size is a word 
+            BEQ     SUBSIZEW
+    
+            CMP.B   #$3,D7     *Compare if the size is a long 
+            BEQ     SUBSIZEL 
+
+SUBSIZEB    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$1, A0 
+        
+            BRA     SUBDNDEST *Branches to destination
+
+SUBSIZEW    MOVE.W  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$2, A0 
+        
+            BRA     SUBDNDEST *Branches to destination
+
+SUBSIZEL    MOVE.L  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$4, A0 
+        
+            BRA     SUBDNDEST *Branches to destination
+            
+SUBDNDEST   MOVE.W  D0, D1
+            AND.W   #$E00, D1   *Isolate register
+            ASR.L   #8, D1
+            ASR.L   #1, D1
+            MOVE.W  D1, D3      *Move register to d3
+            MOVE.B  #$0, D6
+            
+            RTS
+
+
+
+MULSEA      MOVE.L  D0, D1
+            AND.L   #$38, D1    *Isolate source mode
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     MULSDATAREG
+            
+            CMP.L   #$10, D1    *Check if 010
+            BEQ     MULSINADDRREG
+            
+            CMP.L   #$18, D1    *Check if 011
+            BEQ     MULSPLUSADDRREG
+            
+            CMP.L   #$20, D1    *Check if 100
+            BEQ     MULSMINUSADDRREG
+            
+            CMP.L   #$38, D1     *Check if 111
+            BEQ     MULSADDRESSDATA
+                
+MULSDATAREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of Dn
+            MOVE.B  #$0, D5     *Move type of source
+            
+            BRA     MULSDEST
+            
+MULSINADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$3, D5     *Move type of source
+            
+            BRA     MULSDEST 
+           
+MULSPLUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$4, D5     *Move type of source
+            
+            BRA     MULSDEST 
+            
+MULSMINUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$5, D5     *Move type of source
+            
+            BRA     MULSDEST 
+            
+MULSADDRESSDATA MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     MULSADDRW
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     MULSADDRL
+            
+            CMP.L   #$4, D1     *Check if 100
+            BEQ     MULSDATA
+            
+MULSADDRW   MOVE.W  (A0),D2     *Move addr
+            MOVE.B  #$6, D5     *Store type
+            ADDA.L  #$2, A0 
+            
+            BRA     MULSDEST
+
+MULSADDRL   MOVE.L  (A0),D2     *Move addr
+            MOVE.B  #$7, D5     *Store type
+            ADDA.L  #$4, A0 
+            
+            BRA     MULSDEST
+            
+MULSDATA    CMP.B   #$1,D7     *Compare if the size is a byte  
+            BEQ     MULSSIZEB
+    
+            CMP.B   #$2,D7     *Compare if the size is a word 
+            BEQ     MULSSIZEW
+    
+            CMP.B   #$3,D7     *Compare if the size is a long 
+            BEQ     MULSSIZEL 
+
+MULSSIZEB   MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$1, A0 
+        
+            BRA     MULSDEST *Branches to destination
+
+MULSSIZEW   MOVE.W  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$2, A0 
+        
+            BRA     MULSDEST *Branches to destination
+
+MULSSIZEL   MOVE.L  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$4, A0 
+        
+            BRA     MULSDEST *Branches to destination
+            
+MULSDEST    MOVE.W  D0, D1
+            AND.W   #$E00, D1   *Isolate register
+            ASR.L   #8, D1
+            ASR.L   #1, D1
+            MOVE.W  D1, D3      *Move register to d3
+            MOVE.B  #$0, D6
+            
+            RTS
+
+
+
+
+DIVUEA      MOVE.L  D0, D1
+            AND.L   #$38, D1    *Isolate source mode
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     DIVUDATAREG
+            
+            CMP.L   #$10, D1    *Check if 010
+            BEQ     DIVUINADDRREG
+            
+            CMP.L   #$18, D1    *Check if 011
+            BEQ     DIVUPLUSADDRREG
+            
+            CMP.L   #$20, D1    *Check if 100
+            BEQ     DIVUMINUSADDRREG
+            
+            CMP.L   #$38, D1     *Check if 111
+            BEQ     DIVUADDRESSDATA
+                
+DIVUDATAREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of Dn
+            MOVE.B  #$0, D5     *Move type of source
+            
+            BRA     DIVUDEST
+            
+DIVUINADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$3, D5     *Move type of source
+            
+            BRA     DIVUDEST 
+           
+DIVUPLUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$4, D5     *Move type of source
+            
+            BRA     DIVUDEST 
+            
+DIVUMINUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$5, D5     *Move type of source
+            
+            BRA     DIVUDEST 
+            
+DIVUADDRESSDATA MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     DIVUADDRW
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     DIVUADDRL
+            
+            CMP.L   #$4, D1     *Check if 100
+            BEQ     DIVUDATA
+            
+DIVUADDRW   MOVE.W  (A0),D2     *Move addr
+            MOVE.B  #$6, D5     *Store type
+            ADDA.L  #$2, A0 
+            
+            BRA     DIVUDEST
+
+DIVUADDRL   MOVE.L  (A0),D2     *Move addr
+            MOVE.B  #$7, D5     *Store type
+            ADDA.L  #$4, A0 
+            
+            BRA     DIVUDEST
+            
+DIVUDATA    CMP.B   #$1,D7     *Compare if the size is a byte  
+            BEQ     DIVUSIZEB
+    
+            CMP.B   #$2,D7     *Compare if the size is a word 
+            BEQ     DIVUSIZEW
+    
+            CMP.B   #$3,D7     *Compare if the size is a long 
+            BEQ     DIVUSIZEL 
+
+DIVUSIZEB   MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$1, A0 
+        
+            BRA     DIVUDEST *Branches to destination
+
+DIVUSIZEW   MOVE.W  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$2, A0 
+        
+            BRA     DIVUDEST *Branches to destination
+
+DIVUSIZEL   MOVE.L  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$4, A0 
+        
+            BRA     DIVUDEST *Branches to destination
+            
+DIVUDEST    MOVE.W  D0, D1
+            AND.W   #$E00, D1   *Isolate register
+            ASR.L   #8, D1
+            ASR.L   #1, D1
+            MOVE.W  D1, D3      *Move register to d3
+            MOVE.B  #$0, D6
+            
+            RTS
+
+
+
+LEAEA       MOVE.L  D0, D1
+            AND.L   #$38, D1    *Isolate source mode
+            
+            CMP.L   #$10, D1    *Check if 010
+            BEQ     LEAINADDRREG
+            
+            CMP.L   #$38, D1     *Check if 111
+            BEQ     LEAADDRESS
+            
+LEAINADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$3, D5     *Move type of source
+            
+            BRA     LEADEST 
+            
+LEAADDRESS  MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     LEAADDRW
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     LEAADDRL
+            
+LEAADDRW    MOVE.W  (A0),D2     *Move addr
+            MOVE.B  #$6, D5     *Store type
+            ADDA.L  #$2, A0 
+            
+            BRA     LEADEST 
+
+LEAADDRL    MOVE.L  (A0),D2     *Move addr
+            MOVE.B  #$7, D5     *Store type
+            ADDA.L  #$4, A0
+            
+            BRA     LEADEST 
+            
+LEADEST     MOVE.W  D0, D1
+            AND.W   #$E00, D1   *Isolate register
+            ASR.L   #8, D1
+            ASR.L   #1, D1
+            MOVE.W  D1, D3      *Move register to d3
+            MOVE.B  #$1, D6
+            
+            RTS
+            
+            
+            
+CLREA       MOVE.L  D0, D1
+            AND.L   #$38, D1    *Isolate source mode
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     CLRDATAREG
+            
+            CMP.L   #$10, D1    *Check if 010
+            BEQ     CLRINADDRREG
+            
+            CMP.L   #$18, D1    *Check if 011
+            BEQ     CLRPLUSADDRREG
+            
+            CMP.L   #$20, D1    *Check if 100
+            BEQ     CLRMINUSADDRREG
+            
+            CMP.L   #$38, D1     *Check if 111
+            BEQ     CLRADDRESS            
+
+CLRDATAREG  MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of Dn
+            MOVE.B  #$0, D5     *Move type of source
+            
+            RTS
+            
+CLRINADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$3, D5     *Move type of source
+            
+            RTS
+           
+CLRPLUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$4, D5     *Move type of source
+            
+            RTS
+            
+CLRMINUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$5, D5     *Move type of source
+            
+            RTS
+            
+CLRADDRESS  MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     DIVUADDRW
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     DIVUADDRL
+            
+CLRADDRW    MOVE.W  (A0),D2     *Move addr
+            MOVE.B  #$6, D5     *Store type
+            ADDA.L  #$2, A0 
+            
+            RTS
+
+CLRADDRL    MOVE.L  (A0),D2     *Move addr
+            MOVE.B  #$7, D5     *Store type
+            ADDA.L  #$4, A0
+            
+            RTS
+
+
+
+
+ANDEA           MOVE.W  D0, D1
+                AND.W   #$1C0, D1     *Isolate opmode
+                
+                CMP.W   #$100, D1     *Check if < 100
+                BLT     ANDEADN
+                
+                BRA     ANDDNEA
+                
+ANDDNEA         MOVE.W  D0, D1
+                AND.W   #$E00, D1   *Isolate register
+                ASR.L   #8, D1
+                ASR.L   #1, D1
+                MOVE.W  D1, D2      *Move register to d2
+                MOVE.B  #$0, D5
+                
+                BRA     ANDEADEST
+                
+ANDEADEST       MOVE.L  D0, D1
+                AND.L   #$38, D1    *Isolate mode
+            
+                CMP.L   #$10, D1    *Check if 010
+                BEQ     ANDINADDRREGD
+            
+                CMP.L   #$18, D1    *Check if 011
+                BEQ     ANDPLUSADDRREGD
+            
+                CMP.L   #$20, D1    *Check if 100
+                BEQ     ANDMINUSADDRREGD
+            
+                CMP.L   #$38, D1     *Check if 111
+                BEQ     ANDADDRESSD
+                
+            
+ANDINADDRREGD MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D3      *Move value of an
+            MOVE.B  #$3, D6     *Move type of source
+            
+            RTS
+            
+ANDPLUSADDRREGD MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D3      *Move value of an
+            MOVE.B  #$4, D6     *Move type of source
+            
+            RTS
+            
+ANDMINUSADDRREGD MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D3      *Move value of an
+            MOVE.B  #$5, D6     *Move type of source
+            
+            RTS
+            
+ANDADDRESSD MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     ANDADDRWD
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     ANDADDRLD
+            
+ANDADDRWD   MOVE.W  (A0),D3     *Move addr
+            MOVE.B  #$6, D6     *Store type
+            ADDA.L  #$2, A0 
+            
+            RTS
+
+ANDADDRLD   MOVE.L  (A0),D3     *Move addr
+            MOVE.B  #$7, D6     *Store type
+            ADDA.L  #$4, A0
+            
+            RTS
+                
+ANDEADN     MOVE.L  D0, D1
+            AND.L   #$38, D1    *Isolate source mode
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     ANDDATAREG
+            
+            CMP.L   #$10, D1    *Check if 010
+            BEQ     ANDINADDRREG
+            
+            CMP.L   #$18, D1    *Check if 011
+            BEQ     ANDPLUSADDRREG
+            
+            CMP.L   #$20, D1    *Check if 100
+            BEQ     ANDMINUSADDRREG
+            
+            CMP.L   #$38, D1     *Check if 111
+            BEQ     ANDADDRESSDATA
+                
+ANDDATAREG  MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of Dn
+            MOVE.B  #$0, D5     *Move type of source
+            
+            BRA     ANDDNDEST
+            
+ANDINADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$3, D5     *Move type of source
+            
+            BRA     ANDDNDEST
+            
+ANDPLUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$4, D5     *Move type of source
+            
+            BRA     ANDDNDEST
+            
+ANDMINUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$5, D5     *Move type of source
+            
+            BRA     ANDDNDEST
+            
+ANDADDRESSDATA MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     ANDADDRW
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     ANDADDRL
+            
+            CMP.L   #$4, D1     *Check if 100
+            BEQ     ANDDATA
+            
+ANDADDRW    MOVE.W  (A0),D2     *Move addr
+            MOVE.B  #$6, D5     *Store type
+            ADDA.L  #$2, A0 
+            
+            BRA     ANDDNDEST
+
+ANDADDRL    MOVE.L  (A0),D2     *Move addr
+            MOVE.B  #$7, D5     *Store type
+            ADDA.L  #$4, A0 
+            
+            BRA     ANDDNDEST
+            
+ANDDATA     CMP.B   #$1,D7     *Compare if the size is a byte  
+            BEQ     ANDSIZEB
+    
+            CMP.B   #$2,D7     *Compare if the size is a word 
+            BEQ     ANDSIZEW
+    
+            CMP.B   #$3,D7     *Compare if the size is a long 
+            BEQ     ANDSIZEL 
+
+ANDSIZEB    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$1, A0 
+        
+            BRA     ANDDNDEST *Branches to destination
+
+ANDSIZEW    MOVE.W  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$2, A0 
+        
+            BRA     ANDDNDEST *Branches to destination
+
+ANDSIZEL    MOVE.L  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$4, A0 
+        
+            BRA     ANDDNDEST *Branches to destination
+            
+ANDDNDEST   MOVE.W  D0, D1
+            AND.W   #$E00, D1   *Isolate register
+            ASR.L   #8, D1
+            ASR.L   #1, D1
+            MOVE.W  D1, D3      *Move register to d3
+            MOVE.B  #$0, D6
+            
+            RTS
+
+
+
+LSREA       MOVE.W  D0, D1
+            AND.W   #$20, D1    *Isolate ir
+            
+            CMP.W   #$20, D1    *Check if 1
+            BEQ     LSRD
+            
+            BRA     LSRC
+
+LSRD        MOVE.W  D0, D1
+            AND.W   #$E00, D1   *Isolate count/register
+            ASR.L   #8, D1
+            ASR.L   #1, D1
+            MOVE.W  D1, D2
+            MOVE.B  #$0, D5
+            
+            BRA     LSRDEST
+            
+LSRC        MOVE.W  D0, D1
+            AND.W   #$E00, D1   *Isolate count/register
+            ASR.L   #8, D1
+            ASR.L   #1, D1
+            MOVE.W  D1, D2
+            MOVE.B  #$8, D5
+            
+            BRA     LSRDEST 
+            
+LSRDEST     MOVE.W  D0, D1
+            AND.W   #$7, D1     *Isolate register
+            MOVE.W  D1, D3
+            MOVE.B  #$0, D6
+            
+            RTS
+            
+LSMEA       MOVE.L  D0, D1
+            AND.L   #$38, D1    *Isolate source mode
+            
+            CMP.L   #$10, D1    *Check if 010
+            BEQ     LSMINADDRREG
+            
+            CMP.L   #$18, D1    *Check if 011
+            BEQ     LSMPLUSADDRREG
+            
+            CMP.L   #$20, D1    *Check if 100
+            BEQ     LSMMINUSADDRREG
+            
+            CMP.L   #$38, D1     *Check if 111
+            BEQ     LSMADDRESS
+            
+LSMINADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$3, D5     *Move type of source
+            
+            RTS
+            
+LSMPLUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$4, D5     *Move type of source
+            
+            RTS
+            
+LSMMINUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$5, D5     *Move type of source
+            
+            RTS
+            
+LSMADDRESS  MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     LSMADDRW
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     LSMADDRL
+            
+LSMADDRW    MOVE.W  (A0),D2     *Move addr
+            MOVE.B  #$6, D5     *Store type
+            ADDA.L  #$2, A0 
+            
+            RTS
+
+LSMADDRL    MOVE.L  (A0),D2     *Move addr
+            MOVE.B  #$7, D5     *Store type
+            ADDA.L  #$4, A0
+            
+            RTS
+            
+            
+            
+ASREA       MOVE.W  D0, D1
+            AND.W   #$20, D1    *Isolate ir
+            
+            CMP.W   #$20, D1    *Check if 1
+            BEQ     ASRD
+            
+            BRA     ASRC
+
+ASRD        MOVE.W  D0, D1
+            AND.W   #$E00, D1   *Isolate count/register
+            ASR.L   #8, D1
+            ASR.L   #1, D1
+            MOVE.W  D1, D2
+            MOVE.B  #$0, D5
+            
+            BRA     ASRDEST
+            
+ASRC        MOVE.W  D0, D1
+            AND.W   #$E00, D1   *Isolate count/register
+            ASR.L   #8, D1
+            ASR.L   #1, D1
+            MOVE.W  D1, D2
+            MOVE.B  #$8, D5
+            
+            BRA     ASRDEST 
+            
+ASRDEST     MOVE.W  D0, D1
+            AND.W   #$7, D1     *Isolate register
+            MOVE.W  D1, D3
+            MOVE.B  #$0, D6
+            
+            RTS
+            
+ASMEA       MOVE.L  D0, D1
+            AND.L   #$38, D1    *Isolate source mode
+            
+            CMP.L   #$10, D1    *Check if 010
+            BEQ     ASMINADDRREG
+            
+            CMP.L   #$18, D1    *Check if 011
+            BEQ     ASMPLUSADDRREG
+            
+            CMP.L   #$20, D1    *Check if 100
+            BEQ     ASMMINUSADDRREG
+            
+            CMP.L   #$38, D1     *Check if 111
+            BEQ     ASMADDRESS
+            
+ASMINADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$3, D5     *Move type of source
+            
+            RTS
+            
+ASMPLUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$4, D5     *Move type of source
+            
+            RTS
+            
+ASMMINUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$5, D5     *Move type of source
+            
+            RTS
+            
+ASMADDRESS  MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     LSMADDRW
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     LSMADDRL
+            
+ASMADDRW    MOVE.W  (A0),D2     *Move addr
+            MOVE.B  #$6, D5     *Store type
+            ADDA.L  #$2, A0 
+            
+            RTS
+
+ASMADDRL    MOVE.L  (A0),D2     *Move addr
+            MOVE.B  #$7, D5     *Store type
+            ADDA.L  #$4, A0
+            
+            RTS
+
+
+
+
+ROREA       MOVE.W  D0, D1
+            AND.W   #$20, D1    *Isolate ir
+            
+            CMP.W   #$20, D1    *Check if 1
+            BEQ     RORD
+            
+            BRA     RORC
+
+RORD        MOVE.W  D0, D1
+            AND.W   #$E00, D1   *Isolate count/register
+            ASR.L   #8, D1
+            ASR.L   #1, D1
+            MOVE.W  D1, D2
+            MOVE.B  #$0, D5
+            
+            BRA     RORDEST
+            
+RORC        MOVE.W  D0, D1
+            AND.W   #$E00, D1   *Isolate count/register
+            ASR.L   #8, D1
+            ASR.L   #1, D1
+            MOVE.W  D1, D2
+            MOVE.B  #$8, D5
+            
+            BRA     RORDEST 
+            
+RORDEST     MOVE.W  D0, D1
+            AND.W   #$7, D1     *Isolate register
+            MOVE.W  D1, D3
+            MOVE.B  #$0, D6
+            
+            RTS
+            
+ROMEA       MOVE.L  D0, D1
+            AND.L   #$38, D1    *Isolate source mode
+            
+            CMP.L   #$10, D1    *Check if 010
+            BEQ     ROMINADDRREG
+            
+            CMP.L   #$18, D1    *Check if 011
+            BEQ     ROMPLUSADDRREG
+            
+            CMP.L   #$20, D1    *Check if 100
+            BEQ     ROMMINUSADDRREG
+            
+            CMP.L   #$38, D1     *Check if 111
+            BEQ     ROMADDRESS
+            
+ROMINADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$3, D5     *Move type of source
+            
+            RTS
+            
+ROMPLUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$4, D5     *Move type of source
+            
+            RTS
+            
+ROMMINUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$5, D5     *Move type of source
+            
+            RTS
+            
+ROMADDRESS  MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     ROMADDRW
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     ROMADDRL
+            
+ROMADDRW    MOVE.W  (A0),D2     *Move addr
+            MOVE.B  #$6, D5     *Store type
+            ADDA.L  #$2, A0 
+            
+            RTS
+
+ROMADDRL    MOVE.L  (A0),D2     *Move addr
+            MOVE.B  #$7, D5     *Store type
+            ADDA.L  #$4, A0
+            
+            RTS
+            
+            
+            
+            
+CMPEA       MOVE.L  D0, D1
+            AND.L   #$38, D1    *Isolate source mode
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     CMPDATAREG
+            
+            CMP.L   #$8, D1     *Check if 001
+            BEQ     CMPADDRREG
+            
+            CMP.L   #$10, D1    *Check if 010
+            BEQ     CMPINADDRREG
+            
+            CMP.L   #$18, D1    *Check if 011
+            BEQ     CMPPLUSADDRREG
+            
+            CMP.L   #$20, D1    *Check if 100
+            BEQ     CMPMINUSADDRREG
+            
+            CMP.L   #$38, D1     *Check if 111
+            BEQ     CMPADDRESSDATA
+                
+CMPDATAREG  MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of Dn
+            MOVE.B  #$0, D5     *Move type of source
+            
+            BRA     CMPDNDEST
+            
+CMPADDRREG  MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of An
+            MOVE.B  #$1, D5     *Move type of source
+            
+            BRA     CMPDNDEST
+            
+CMPINADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$3, D5     *Move type of source
+            
+            BRA     CMPDNDEST
+            
+CMPPLUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$4, D5     *Move type of source
+            
+            BRA     CMPDNDEST
+            
+CMPMINUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$5, D5     *Move type of source
+            
+            BRA     CMPDNDEST
+            
+CMPADDRESSDATA MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     CMPADDRW
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     CMPADDRL
+            
+            CMP.L   #$4, D1     *Check if 100
+            BEQ     CMPDATA
+            
+CMPADDRW    MOVE.W  (A0),D2     *Move addr
+            MOVE.B  #$6, D5     *Store type
+            ADDA.L  #$2, A0 
+            
+            BRA     CMPDNDEST
+
+CMPADDRL    MOVE.L  (A0),D2     *Move addr
+            MOVE.B  #$7, D5     *Store type
+            ADDA.L  #$4, A0 
+            
+            BRA     CMPDNDEST
+            
+CMPDATA     CMP.B   #$1,D7     *Compare if the size is a byte  
+            BEQ     CMPSIZEB
+    
+            CMP.B   #$2,D7     *Compare if the size is a word 
+            BEQ     CMPSIZEW
+    
+            CMP.B   #$3,D7     *Compare if the size is a long 
+            BEQ     CMPSIZEL 
+
+CMPSIZEB    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$1, A0 
+        
+            BRA     CMPDNDEST *Branches to destination
+
+CMPSIZEW    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$2, A0 
+        
+            BRA     CMPDNDEST *Branches to destination
+
+CMPSIZEL    MOVE.B  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$4, A0 
+        
+            BRA     CMPDNDEST *Branches to destination
+            
+CMPDNDEST   MOVE.W  D0, D1
+            AND.W   #$E00, D1   *Isolate register
+            ASR.L   #8, D1
+            ASR.L   #1, D1
+            MOVE.W  D1, D3      *Move register to d3
+            MOVE.B  #$0, D6
+            
+            RTS
+            
+            
+            
+JSREA       MOVE.L  D0, D1
+            AND.L   #$38, D1    *Isolate source mode
+
+            CMP.L   #$10, D1    *Check if 010
+            BEQ     JSRINADDRREG
+            
+            CMP.L   #$38, D1     *Check if 111
+            BEQ     JSRADDRESS
+            
+JSRINADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$3, D5     *Move type of source
+            
+            RTS
+            
+JSRADDRESS  MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     JSRADDRW
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     JSRADDRL
+            
+JSRADDRW    MOVE.W  (A0),D2     *Move addr
+            MOVE.B  #$6, D5     *Store type
+            ADDA.L  #$2, A0 
+            
+            RTS
+
+JSRADDRL    MOVE.L  (A0),D2     *Move addr
+            MOVE.B  #$7, D5     *Store type
+            ADDA.L  #$4, A0
+            
+            RTS
+
+
+                
 
 EMPTYLINEMESSAGE DC.B   '', 0
 NEWLINE         DC.B    $0D,$0A,0
