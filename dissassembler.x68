@@ -275,7 +275,6 @@ DATAEALOOPD     ROL.L       #$4, D3             *Shift left to right position
                 
 
 PRINTSOURCE     ADD.B       #$1, D5             *Add 1 to size
-                *MOVEA.W     D7, A7
 
                 CMP.B       #$1, D5             *Check if Dn
                 BEQ         DNEA                *It's DN
@@ -405,21 +404,24 @@ DATAEA          CMP.L       #$1, D7
                 BEQ         ADDLONGS
                 
 ADDBYTES        MOVE.L      #$2, D7
+                MOVE.L      #$1, D2
                 BRA         DATAEALOOP
                 
 ADDWORDS        MOVE.L      #$4, D7
+                MOVE.L      #$2, D5
                 BRA         DATAEALOOP
               
 ADDLONGS        MOVE.L      #$8, D7
+                MOVE.L      #$3, D2
                 BRA         DATAEALOOP
                 
-DATAEALOOP      CMP.W       #$1, A7
+DATAEALOOP      CMP.W       #$1, D5
                 BEQ         BYTEDATA
                 
-                CMP.W       #$2, A7
+                CMP.W       #$2, D5
                 BEQ         WORDDATA
                 
-                CMP.W       #$3, A7
+                CMP.W       #$3, D5
                 BEQ         LONGDATA
                 
 BYTEDATA        ROL.B       #$4, D2             *Shift left to right position
@@ -1696,7 +1698,77 @@ MOVEMEA         MOVE.L  D0, D1
                 
                 BEQ     MOVEMRM
                 
-MOVEMRM
+MOVEMRM         MOVE.W  (A0), D2
+                ADDA.L  #$2, A0
+                MOVE.L  #$10, D5
+                MOVE.L  #$0, D0     *Counter
+MOVEMRLOOP      MOVE.W  D3, D1      *For editing
+                AND.W   #$1, D1
+                
+                CMP.W   #$1, D1
+                BNE     MOVEMNOONES
+                
+                MOVE.B  D0, -(SP)   *Move counter to stack
+                ADD.B   #1, D0
+                ROR.W   #$1, D2     *Shift to right
+                
+                CMP.W   #15, D0
+                BNE     MOVEMRLOOP
+                
+                BRA     MOVEMMDEST
+                
+MOVEMNOONES     ADD.L   #1, D0     *Add counter
+                ROR.W   #$1, D2     *Shift to right
+                
+                BRA     MOVEMRLOOP
+                
+MOVEMMDEST      MOVE.L  D0, D1
+                AND.L   #$38, D1    *Isolate source mode
+            
+                CMP.L   #$10, D1    *Check if 010
+                BEQ     MOVEMINADDRREGD
+                
+                CMP.W   #$100, D1 *Checks -(An)
+                BEQ     MOVEMPREADDRD
+            
+                CMP.L   #$38, D1     *Check if 111
+                BEQ     MOVEMADDRESSD
+                
+MOVEMINADDRREGD MOVE.L  D0, D1
+                AND.L   #$7, D1     *Isolate register
+                MOVE.L  D1, D3      *Move value of an
+                MOVE.B  #$3, D6     *Move type of dest
+            
+                RTS
+                
+MOVEMPREADDRD   MOVE.L  D0, D1
+                AND.L   #$7, D1     *Isolate register
+                MOVE.L  D1, D3      *Move value of an
+                MOVE.B  #$5, D6     *Move type of source
+                MOVE.L  #$11, D5    *flip mask
+            
+                RTS
+            
+MOVEMADDRESSD   MOVE.L  D0, D1
+                AND.L   #$7, D1     *Isolate register
+            
+                CMP.L   #$0, D1     *Check if 000
+                BEQ     MOVEMADDRWD
+            
+                CMP.L   #$1, D1     *Check if 001
+                BEQ     MOVEMADDRLD
+            
+MOVEMADDRWD     MOVE.W  (A0),D3     *Move addr
+                MOVE.B  #$6, D6     *Store type
+                ADDA.L  #$2, A0 
+            
+                RTS
+
+MOVEMADDRLD     MOVE.L  (A0),D3     *Move addr
+                MOVE.B  #$7, D6     *Store type
+                ADDA.L  #$4, A0
+            
+                RTS
                 
 MOVEMMR         MOVE.L  D0, D1
                 AND.L   #$38, D1    *Isolate source mode
@@ -1747,21 +1819,27 @@ MOVEMADDRL      MOVE.L  (A0),D2     *Move addr
                 
 MOVEMRDEST      MOVE.W  (A0), D3
                 ADDA.L  #$2, A0
+                MOVE.L  #$10, D6
                 MOVE.L  #$0, D0     *Counter
-                MOVE.W  D3, D1      *For editing
+MOVEMRDESTLOOP  MOVE.W  D3, D1      *For editing
                 AND.W   #$1, D1
                 
                 CMP.W   #$1, D1
-                BNE     loop
+                BNE     MOVEMNOONE
                 
                 MOVE.B  D0, -(SP)   *Move counter to stack
-                ADD.B   #$1, D0
+                ADD.B   #1, D0
+                ROR.W   #$1, D3     *Shift to right
                 
                 CMP.W   #15, D0
-                BNE     loop
+                BNE     MOVEMRDESTLOOP
                 
                 RTS
                 
+MOVEMNOONE      ADD.L   #1, D0     *Add counter
+                ROR.W   #$1, D3     *Shift to right
+                
+                BRA     MOVEMRDESTLOOP
                 
 ADDEA           MOVE.W  D0, D1
                 AND.W   #$1C0, D1     *Isolate opmode
