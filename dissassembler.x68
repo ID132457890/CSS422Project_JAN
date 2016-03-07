@@ -12,6 +12,8 @@ START:                  ; first instruction of program
     JSR         INPUT
     
 LOOP    
+
+    ADDA.L      #$1, A3 *Counter
     *Print the initial address
     JSR         PRINTADDRESS
     
@@ -21,7 +23,7 @@ LOOP
     *Copy the opcode to D1 for changes
     MOVE.W      (A0), D1
     
-    *MOVE.W      D1, A7    *Keep original address in case there is an error
+    MOVE.W      D1, A6    *Keep original address in case there is an error
     
     *Increase the address by 2, since that part has been read
     ADDA.W       #$2, A0
@@ -77,10 +79,35 @@ CONTINUE    JSR         EMPTYLINE
     
     JSR         CLEARALL
     
+    CMP.L       #$18, A3
+    BEQ         ASKFORCONTINUE
+    
     BRA         LOOP        *If not, then loop back            
     
     SIMHALT   
 *------------------------------------main----------------------------------------
+    
+ASKFORCONTINUE  LEA         CONTINUEMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      #5, D0  *Read y/n
+ASKLOOP         TRAP        #15
+                
+                CMP.B       #$79, D1    *y
+                BEQ         YESCONTINUE
+                
+                CMP.B       #$6E, D1    *n
+                BEQ         NOCONTINUE
+                
+                BRA         ASKLOOP
+                
+YESCONTINUE     JSR         EMPTYLINE
+                MOVEA.L     #$0, A3
+                BRA         LOOP
+                
+NOCONTINUE      JSR         EMPTYLINE
+                BRA         OUTPUTEND
     
 INVALIDOPCODE   LEA         INVALIDMESSAGE, A1
                 MOVE.B      #14, D0
@@ -95,7 +122,7 @@ INVALIDOPCODE   LEA         INVALIDMESSAGE, A1
                 TRAP        #15
                 
                 MOVE.B      #$4, D6             *Put actual size in D6
-                MOVE.W      A7, D3            *Move opcode in D3
+                MOVE.W      A6, D3            *Move opcode in D3
 INVALIDLOOP     ROL.W       #$4, D3             *Shift left to right position
                 MOVE.W      D3, D0              *Move to D0 for backup
                 AND.W       #$F, D3             *Isolate first byte
@@ -538,7 +565,7 @@ DATAEA          CMP.L       #$1, D7
                 BEQ         ADDLONGS
                 
 ADDBYTES        MOVE.L      #$2, D7
-                MOVE.L      #$1, D2
+                MOVE.L      #$1, D5
                 BRA         DATAEALOOP
                 
 ADDWORDS        MOVE.L      #$4, D7
@@ -546,7 +573,7 @@ ADDWORDS        MOVE.L      #$4, D7
                 BRA         DATAEALOOP
               
 ADDLONGS        MOVE.L      #$8, D7
-                MOVE.L      #$3, D2
+                MOVE.L      #$3, D5
                 BRA         DATAEALOOP
                 
 DATAEALOOP      CMP.W       #$1, D5
@@ -657,7 +684,10 @@ EMPTYLINE       LEA         EMPTYLINEMESSAGE, A1  *Empty line
 *Description: Handles what happens when the dissassembler is done
 *----------------------------------------------------------------------------------------------------
 
-OUTPUTEND       SIMHALT
+OUTPUTEND       LEA         ENDMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                SIMHALT
 
 *----------------------------------------------------------------------------------------------------
 *                                           Subroutine: PRINTADDRESS
@@ -1304,12 +1334,45 @@ CHECK0110       *Check for BCC opcode
                 MOVE.W D0,D1 *restore the opcode to d1
                 AND.W #$F000,D1
                 CMP.W #$6000,D1
-                BEQ OPBCC
+                BEQ OPBXX
                 RTS
                 
-OPBCC           LEA BCCMESSAGE, A1
-                MOVE.B  #$21, D4
+OPBXX          * check bit 11,10,9,8 for what bcc codition code                 
+             
+                
+                                 
+                *check if 11,10,9,8 is 1111
+                MOVE.W D0,D1 *restore the opcode to d1
+                AND.W #$F00,D1 *isolate bit 11-8
+                CMP.W #$F00,D1                
+                BEQ OPBLE 1111
+
+            
+                MOVE.W D0,D1
+                AND.W #$E00,D1
+                CMP.W #$E00,D1
+                BEQ OPBGT
+                
+            
+                MOVE.W D0,D1
+                AND.W #$400,D1
+                CMP.W #$400,D1
+                BEQ OPBCC
+                
                 RTS
+                
+OPBCC    LEA BCCMESSAGE, A1   
+         MOVE.B  #$21, D4
+         RTS
+         
+OPBGT    LEA BGTMESSAGE, A1 
+         MOVE.B  #$21, D4  
+         RTS
+
+OPBLE    LEA BLEMESSAGE, A1   
+         MOVE.B  #$21, D4
+         RTS
+                
 *------------------------------------------CHECK0110-------------------------------------------------------
 
 
@@ -1611,8 +1674,8 @@ CHECKEAS        CMP.B   #$0, D4
                 CMP.B   #$19, D4
                 BEQ     CMPEA
                 
-                *CMP.B   #$21, D4
-                *BEQ     BCCEA
+                CMP.B   #$21, D4
+                BEQ     BCCEA
                 
                 CMP.B   #$22, D4
                 BEQ     JSREA
@@ -1856,31 +1919,34 @@ MOVEMEA         MOVE.L  D0, D1
                 CMP.W   #$400, D1       *Check if it's 1
                 BEQ     MOVEMMR
                 
-                BEQ     MOVEMRM
+                BRA     MOVEMRM
                 
 MOVEMRM         MOVE.W  (A0), D2
                 ADDA.L  #$2, A0
                 MOVE.L  #$10, D5
-                MOVE.L  #$0, D0     *Counter
-MOVEMRLOOP      MOVE.W  D3, D1      *For editing
+                MOVEA.L #$0, A2     *Counter
+MOVEMRLOOP      MOVE.W  D2, D1      *For editing
                 AND.W   #$1, D1
                 
                 CMP.W   #$1, D1
                 BNE     MOVEMNOONES
                 
-                MOVE.B  D0, -(SP)   *Move counter to stack
-                ADD.B   #1, D0
+                MOVE.W  A2, -(SP)   *Move counter to stack
+                ADDA.W  #1, A2
                 ROR.W   #$1, D2     *Shift to right
                 
-                CMP.W   #16, D0
+                CMP.W   #16, A2
                 BNE     MOVEMRLOOP
                 
                 BRA     MOVEMMDEST
                 
-MOVEMNOONES     ADD.L   #1, D0     *Add counter
+MOVEMNOONES     ADDA.W  #1, A2     *Add counter
                 ROR.W   #$1, D2     *Shift to right
                 
-                BRA     MOVEMRLOOP
+                CMP.W   #16, A2
+                BNE     MOVEMRLOOP
+                
+                BRA     MOVEMMDEST
                 
 MOVEMMDEST      MOVE.L  D0, D1
                 AND.L   #$38, D1    *Isolate source mode
@@ -2348,7 +2414,7 @@ ADDIEA      CMP.B   #$1,D7     *Compare if the size is a byte
 
 ADDISIZEB   MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.L  #$1, A0 
+            ADDA.L  #$2, A0 
         
             BRA     ADDIDEST *Branches to destination
 
@@ -3569,13 +3635,13 @@ CMPSIZEB    MOVE.W  (A0),D2
         
             BRA     CMPDNDEST *Branches to destination
 
-CMPSIZEW    MOVE.B  (A0),D2 
+CMPSIZEW    MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.L  #$2, A0 
         
             BRA     CMPDNDEST *Branches to destination
 
-CMPSIZEL    MOVE.B  (A0),D2 
+CMPSIZEL    MOVE.L  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.L  #$4, A0 
         
@@ -3593,10 +3659,66 @@ CMPDNDEST   MOVE.W  D0, D1
             
             
             
-*BCCEA       
+BCCEA       MOVE.W  D0, D1
+            MOVE.W  #-1, D6
+            AND.W   #$FF, D1    *Isolate first byte
             
+            CMP.W   #$0, D1
+            BEQ     BCCW
             
+            CMP.W   #$FF, D1
+            BEQ     BCCL
             
+            AND.W   #$80, D1
+            CMP.W   #$80, D1
+            BEQ     BCCBS       *If negative, need further manipulation
+            
+            MOVE.W  D1, D2
+            ADD.W   #$2, D2
+            MOVE.B  #$7, D5
+            
+            RTS
+            
+BCCBS       MOVE.W  D0, D1
+            AND.W   #$FF, D1
+            SUB.B   #$1, D1     *Subtract 1
+            NOT.B   D1          *Flip all bits
+            SUB.B   #$2, D1     *Add 2
+            MOVEA.W A6, A5      *Backup address
+            SUB.W   D1, A5      *Add from address
+            MOVE.W  A5, D1
+            MOVE.W  D1, D2
+            MOVE.B  #$7, D5  
+            
+            RTS
+            
+BCCW        MOVE.W  (A0), D1
+            CMP.W   #0, D1
+            BLT     BCCBS       *If negative, need further manipulation
+            
+            MOVE.W  D1, D2
+            ADD.W   #$2, D2
+            MOVE.B  #$7, D5
+            
+            RTS
+   
+BCCL        MOVE.L  (A0), D2
+            CMP.L   #0, D1
+            BLT     BCCLS       *If negative, need further manipulation
+            
+            MOVE.L  D1, D2
+            ADD.L   #$2, D2
+            MOVE.B  #$8, D5
+            
+            RTS
+                 
+BCCLS       SUB.L   #$1, D1     *Subtract 1
+            NOT.L   D1          *Flip all bits
+            ADD.L   #$2, D1     *Add 2
+            MOVE.L  D1, D2
+            MOVE.B  #$8, D5  
+            
+            RTS
             
             
 JSREA       MOVE.L  D0, D1
@@ -3649,6 +3771,8 @@ NEWLINE         DC.B    $0D,$0A,0
 DIVSMESSAGE     DC.B    'DIVU', 0
 CMPMESSAGE      DC.B     'CMP', 0
 BCCMESSAGE      DC.B     'BCC', 0
+BGTMESSAGE      DC.B     'BGT', 0
+BLEMESSAGE      DC.B     'BLE', 0
 MOVEQMESSAGE    DC.B   'MOVEQ', 0
 ADDAMESSAGE     DC.B    'ADDA', 0
 ADDMESSAGE      DC.B     'ADD', 0
@@ -3680,6 +3804,9 @@ LONGMESSAGE     DC.B    '.L', 0
 
 INPUTMESSAGE    DC.B    'Welcome to JAN disassembler. Please type your addresses in this format: "starting address", "ending address". (period included)', 0
 INPUTMESSAGE2   DC.B    'Now please type your ending address in hex format. Write a . (period) when done.', 0
+
+CONTINUEMESSAGE DC.B    'Section ended. Do you want to continue? (y/n)', 0
+ENDMESSAGE      DC.B    'All done!! Thank you for using JAN disassembler'
 
 SPACEMESSAGE    DC.B    '           ', 0
 COMMAMESSAGE    DC.B    ', ', 0
@@ -3730,6 +3857,7 @@ ANMINUSOPENMESSAGE DC.B '-(', 0
 *~Font size~10~
 *~Tab type~1~
 *~Tab size~4~
+
 
 
 
