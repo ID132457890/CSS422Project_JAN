@@ -59,7 +59,7 @@ LOOP
     
     CMP.B   #-1, D5
     BNE     SOURCE
-    BRA     DESTINATION
+    BRA     CONTINUE
     
 SOURCE    JSR         PRINTSOURCE *Print source EA
 
@@ -2981,7 +2981,8 @@ LEADEST     MOVE.W  D0, D1
             
             
             
-CLREA       MOVE.L  D0, D1
+CLREA       MOVE.L  #-1, D6
+            MOVE.L  D0, D1
             AND.L   #$38, D1    *Isolate source mode
             
             CMP.L   #$0, D1     *Check if 000
@@ -3279,7 +3280,8 @@ LSRDEST     MOVE.W  D0, D1
             
             RTS
             
-LSMEA       MOVE.L  D0, D1
+LSMEA       MOVE.L  #-1, D6
+            MOVE.L  D0, D1
             AND.L   #$38, D1    *Isolate source mode
             
             CMP.L   #$10, D1    *Check if 010
@@ -3375,7 +3377,8 @@ ASRDEST     MOVE.W  D0, D1
             
             RTS
             
-ASMEA       MOVE.L  D0, D1
+ASMEA       MOVE.L  #-1, D6
+            MOVE.L  D0, D1
             AND.L   #$38, D1    *Isolate source mode
             
             CMP.L   #$10, D1    *Check if 010
@@ -3472,7 +3475,8 @@ RORDEST     MOVE.W  D0, D1
             
             RTS
             
-ROMEA       MOVE.L  D0, D1
+ROMEA       MOVE.L  #-1, D6
+            MOVE.L  D0, D1
             AND.L   #$38, D1    *Isolate source mode
             
             CMP.L   #$10, D1    *Check if 010
@@ -3659,7 +3663,8 @@ CMPDNDEST   MOVE.W  D0, D1
             
             
             
-BCCEA       MOVE.W  D0, D1
+BCCEA       MOVE.L  #-1, D6
+            MOVE.W  D0, D1
             MOVE.W  #-1, D6
             AND.W   #$FF, D1    *Isolate first byte
             
@@ -3762,7 +3767,6 @@ JSRADDRL    MOVE.L  (A0),D2     *Move addr
             ADDA.L  #$4, A0
             
             RTS
-
 
                 
 
