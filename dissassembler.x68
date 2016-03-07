@@ -21,8 +21,12 @@ LOOP
     *Copy the opcode to D1 for changes
     MOVE.W      (A0), D1
     
+    *MOVE.W      D1, A7    *Keep original address in case there is an error
+    
     *Increase the address by 2, since that part has been read
     ADDA.W       #$2, A0
+    
+    MOVE.B      #-1, D4     *Start at invalid
     
     JSR         CHECK1100    *Check for AND or MULS
     JSR         CHECK0000   *Check for ANDI, ADDI, BCHG, CMPI or MOVE  initial
@@ -37,20 +41,36 @@ LOOP
    
     MOVE.L      D0, D2          *Backup opcode
    
-    MOVE.B  #14, D0
-    TRAP    #15
-    
-    JSR         PRINTSIZES  *Print the sizes
+    CMP.B       #-1, D4
+    BEQ         INVALIDOPCODE
     
     MOVE.L      D2, D0      *restore opcode
     CLR         D2
     
     JSR         CHECKEAS    *Checks the EAs
     
-    JSR         PRINTSOURCE *Print source EA
-    JSR         PRINTCOMMA
-    JSR         PRINTDESTINATION    *Print destination
-    JSR         EMPTYLINE   
+    *Would go below only if there are no errors
+    MOVE.B  #14, D0         *Print opcode
+    TRAP    #15
+    
+    JSR         PRINTSIZES  *Print the sizes
+    
+    CMP.B   #-1, D5
+    BNE     SOURCE
+    BRA     DESTINATION
+    
+SOURCE    JSR         PRINTSOURCE *Print source EA
+
+    CMP.B   #-1, D6
+    BEQ     DESTINATION
+    
+    JSR     PRINTCOMMA
+    
+DESTINATION     CMP.B   #-1, D6
+    BNE     DEST
+    BRA     CONTINUE
+DEST    JSR         PRINTDESTINATION    *Print destination
+CONTINUE    JSR         EMPTYLINE   
     
     CMP.L       A4, A0      *Check if the starting address is same as ending
     BGE         OUTPUTEND   *If yes, then stop
@@ -62,6 +82,34 @@ LOOP
     SIMHALT   
 *------------------------------------main----------------------------------------
     
+INVALIDOPCODE   LEA         INVALIDMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                LEA         SPACEMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                LEA         DOLLARMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      #$4, D6             *Put actual size in D6
+                MOVE.W      A7, D3            *Move opcode in D3
+INVALIDLOOP     ROL.W       #$4, D3             *Shift left to right position
+                MOVE.W      D3, D0              *Move to D0 for backup
+                AND.W       #$F, D3             *Isolate first byte
+                MOVE.B      D3, D1              *Move byte to D1
+                MOVE.W      D0, D3              *Move original back to D2
+                AND.W       #$FFF0, D3          *Remove first 4 bits
+                SUB.B       #$1, D6
+                
+                JSR         COMPAREADDRESS
+                
+                CMP.B       #$0, D6
+                BNE         INVALIDLOOP
+                
+                BRA         CONTINUE
 
 CLEARALL        CLR         D0
                 CLR         D1
@@ -91,6 +139,8 @@ PRINTSIZES      CMP.B       #$1, D7         *Check if byte
                 
                 CMP.B       #$3, D7         *Check if long
                 BEQ         PRINTLONG
+                
+                JSR         PRINTSPACE
                 
                 RTS
                 
@@ -299,6 +349,90 @@ PRINTSOURCE     ADD.B       #$1, D5             *Add 1 to size
                 
                 CMP.B       #$9, D5             *Check if data
                 BEQ         DATAEA
+                
+                CMP.B       #$10, D5            *Check if list
+                BEQ         ADLISTEA
+                
+                CMP.B       #$11, D5            *Check if list
+                BEQ         DALISTEA
+                
+ADLISTEA        MOVE.B      (SP)+, D1           *Retrieve from stack
+                CMP.B       #7, D1
+                BLE         DLIST
+                BRA         ALIST
+                
+DLIST           LEA         DNMESSAGE, A1       *Show D
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      #3, D0              *Show n
+                TRAP        #15
+                
+                BRA         CHECKADSP
+                
+ALIST           SUB.B       #8, D1              *Subtract 8
+                LEA         ANMESSAGE, A1       *Show A
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      #3, D0              *Show n
+                TRAP        #15
+                
+                BRA         CHECKADSP
+                
+CHECKADSP       MOVE.B      (SP)+, D1           *Retrieve from stack
+                CMP.B       #$FF, D1            *Check if stack is done
+                BNE         ADLISTSLASH
+                
+                MOVE.B      #$FF, -(SP)         *If not, restore it to normal position
+                RTS
+                
+ADLISTSLASH     LEA         SLASHMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                BRA         ADLISTEA
+                
+DALISTEA        MOVE.B      (SP)+, D1           *Retrieve from stack
+                CMP.B       #7, D1
+                BLE         ALIST2
+                BRA         DLIST2
+                
+DLIST2          SUB.B       #8, D1
+                MOVE.L      #7, D0              *Dn is 7 - index
+                SUB.B       D1, D0
+                LEA         DNMESSAGE, A1       *Show D
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      #3, D0              *Show n
+                TRAP        #15
+                
+                BRA         CHECKDASP
+                
+ALIST2          MOVE.L      #7, D0              *An is 7 - index
+                SUB.B       D1, D0
+                LEA         ANMESSAGE, A1       *Show A
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      #3, D0              *Show n
+                TRAP        #15
+                
+                BRA         CHECKDASP
+                
+CHECKDASP       MOVE.B      (SP)+, D1           *Retrieve from stack
+                CMP.B       #$FF, D1            *Check if stack is done
+                BNE         DALISTSLASH
+                
+                MOVE.B      #$FF, -(SP)         *If not, restore it to normal position
+                RTS
+                
+DALISTSLASH     LEA         SLASHMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                BRA         DALISTEA
                 
 DNEA            LEA         DNMESSAGE, A1       *Show D
                 MOVE.B      #14, D0
@@ -1342,29 +1476,28 @@ CHECKOPS        *******Check for NOP and RTS since they are constant
                  CMP #$4E71,D1
                  BEQ OPNOP
 
-              
+                
                 
                 *******Check for lea*******                
                 AND.W #$100,D1  *mask every bit but the 8th
                 CMP.W #$100, D1 *check if bit 8 is 1 
                 BEQ OPLEA
-              
-                ******check for MOVEM*****
-                MOVE.W D0,D1 *RESTORE OPCODE
-                AND.W #$30,D1  *mask every bit but the 8th
-                CMP.W #$30, D1 *check if bit 8 is 1 
-                BEQ OPMOVEM
-    
-                MOVE.W D0,D1 *restore opcode
-                AND.W #$300,D1 *check if th 9 is 1 and 8 is 1
-                CMP.W #$300,D1
-                BEQ OPJSR *check the remaing op codes
                 
-                  ******check for CLR********
-                MOVE.W D0,D1 *RESTORE OPCODE         
-                AND.W #$FF00,D1  *mask every bit but the 8th
-                CMP.W #$4200, D1 *check if bit 8 and 11 is 1
-                BEQ   OPCLR
+                MOVE.W  D0, D1
+                AND.W   #$800, D1   *Isolate 11 bit
+                CMP.W   #$0, D1
+                BEQ     OPCLR
+                
+                MOVE.W  D0, D1
+                AND.W   #$200, D1   *Isolate 9 bit
+                CMP.W   #$0, D1
+                BEQ     OPMOVEM
+                
+                MOVE.W  D0, D1
+                AND.W   #$38, D1   *Isolate 5, 4 and 3 bits
+                CMP.W   #$110, D1
+                BNE     OPJSR
+              
                 RTS
                 
  
@@ -1383,7 +1516,7 @@ OPLEA
                 
 OPMOVEM         LEA OPMOVEMMESSAGE,A1
                 MOVE.B  #$3, D4
-*                
+                
                 MOVE.W  D0, D1
                 AND.W   #$40, D1       *Isolate SIZE part
                 CMP.W   #$0, D1         *If SIZE 0
@@ -1427,14 +1560,17 @@ SIZEL           MOVE.B  #$3, D7
 
 
 *-------------------------------------EA Code begins-----------------------------------------------------
-CHECKEAS        CMP.B   #$1, D4
+CHECKEAS        CMP.B   #$0, D4
+                BEQ     NOPEA
+
+                CMP.B   #$1, D4
                 BEQ     MOVEEA
                 
                 CMP.B   #$2, D4
                 BEQ     MOVEQEA
                 
-                *CMP.B   #$3, D4
-                *BEQ     MOVEAMEA
+                CMP.B   #$3, D4
+                BEQ     MOVEMEA
                 
                 CMP.B   #$4, D4
                 BEQ     ADDEA
@@ -1481,9 +1617,25 @@ CHECKEAS        CMP.B   #$1, D4
                 CMP.B   #$22, D4
                 BEQ     JSREA
                 
+                CMP.B   #$23, D4
+                BEQ     RTSEA
                 
+                CMP.B   #$25, D4
+                BEQ     LSMEA
+                
+                CMP.B   #$26, D4
+                BEQ     ASMEA
+                
+                CMP.B   #$27, D4
+                BEQ     ROMEA
                 
 
+
+NOPEA       MOVE.B  #-1, D5
+            RTS
+            
+RTSEA       MOVE.B  #-1, D5
+            RTS
 
 MOVEEA      MOVE.L  D0, D1
             AND.L   #$38, D1    *Isolate source mode
@@ -1505,6 +1657,8 @@ MOVEEA      MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     MOVEADDRESSDATA
+            
+            BRA     INVALIDOPCODE
             
 MOVEDATAREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -1553,6 +1707,8 @@ MOVEADDRESSDATA MOVE.L  D0, D1
             CMP.L   #$4, D1     *Check if 100
             BEQ     MOVEDATA
             
+            BRA     INVALIDOPCODE
+            
 MOVEADDRW   MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -1574,7 +1730,7 @@ MOVEDATA    CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     MOVESIZEL 
 
-MOVESIZEB   MOVE.B  (A0),D2 
+MOVESIZEB   MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.L  #$1, A0 
         
@@ -1608,6 +1764,8 @@ MOVEDEST    MOVE.W  D0, D1
         
             CMP.W   #$1C0, D1 *Checks Addressing Mode
             BEQ     MOVEADDRD
+            
+            BRA     INVALIDOPCODE
             
 MOVEDATAREGD    MOVE.W  D0, D1
                 AND.W   #$E00, D1   *Isolate register
@@ -1653,6 +1811,8 @@ MOVEADDRD       MOVE.W  D0, D1
                 
                 CMP.W   #$200, D1     *Check if 001
                 BEQ     MOVEADDRLD  
+                
+                BRA     INVALIDOPCODE
                 
 MOVEADDRWD      MOVE.W  (A0), D3
                 MOVE.B  #$6, D6
@@ -1712,7 +1872,7 @@ MOVEMRLOOP      MOVE.W  D3, D1      *For editing
                 ADD.B   #1, D0
                 ROR.W   #$1, D2     *Shift to right
                 
-                CMP.W   #15, D0
+                CMP.W   #16, D0
                 BNE     MOVEMRLOOP
                 
                 BRA     MOVEMMDEST
@@ -1733,6 +1893,8 @@ MOVEMMDEST      MOVE.L  D0, D1
             
                 CMP.L   #$38, D1     *Check if 111
                 BEQ     MOVEMADDRESSD
+                
+                BRA     INVALIDOPCODE
                 
 MOVEMINADDRREGD MOVE.L  D0, D1
                 AND.L   #$7, D1     *Isolate register
@@ -1757,6 +1919,8 @@ MOVEMADDRESSD   MOVE.L  D0, D1
             
                 CMP.L   #$1, D1     *Check if 001
                 BEQ     MOVEMADDRLD
+                
+                BRA     INVALIDOPCODE
             
 MOVEMADDRWD     MOVE.W  (A0),D3     *Move addr
                 MOVE.B  #$6, D6     *Store type
@@ -1781,6 +1945,8 @@ MOVEMMR         MOVE.L  D0, D1
             
                 CMP.L   #$38, D1     *Check if 111
                 BEQ     MOVEMADDRESS
+                
+                BRA     INVALIDOPCODE
             
 MOVEMINADDRREG  MOVE.L  D0, D1
                 AND.L   #$7, D1     *Isolate register
@@ -1804,6 +1970,8 @@ MOVEMADDRESS    MOVE.L  D0, D1
             
                 CMP.L   #$1, D1     *Check if 001
                 BEQ     MOVEMADDRL
+                
+                BRA     INVALIDOPCODE
             
 MOVEMADDRW      MOVE.W  (A0),D2     *Move addr
                 MOVE.B  #$6, D5     *Store type
@@ -1831,7 +1999,7 @@ MOVEMRDESTLOOP  MOVE.W  D3, D1      *For editing
                 ADD.B   #1, D0
                 ROR.W   #$1, D3     *Shift to right
                 
-                CMP.W   #15, D0
+                CMP.W   #16, D0
                 BNE     MOVEMRDESTLOOP
                 
                 RTS
@@ -1840,6 +2008,10 @@ MOVEMNOONE      ADD.L   #1, D0     *Add counter
                 ROR.W   #$1, D3     *Shift to right
                 
                 BRA     MOVEMRDESTLOOP
+                
+                
+                
+                
                 
 ADDEA           MOVE.W  D0, D1
                 AND.W   #$1C0, D1     *Isolate opmode
@@ -1873,6 +2045,8 @@ ADDDNEADEST     MOVE.L  D0, D1
                 CMP.L   #$38, D1     *Check if 111
                 BEQ     ADDADDRESSD
                 
+                BRA     INVALIDOPCODE
+                
             
 ADDINADDRREGD MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -1903,6 +2077,8 @@ ADDADDRESSD MOVE.L  D0, D1
             
             CMP.L   #$1, D1     *Check if 001
             BEQ     ADDADDRLD
+            
+            BRA     INVALIDOPCODE
             
 ADDADDRWD   MOVE.W  (A0),D3     *Move addr
             MOVE.B  #$6, D6     *Store type
@@ -1936,6 +2112,8 @@ ADDEADN     MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     ADDADDRESSDATA
+            
+            BRA     INVALIDOPCODE
                 
 ADDDATAREG  MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -1984,6 +2162,8 @@ ADDADDRESSDATA MOVE.L  D0, D1
             CMP.L   #$4, D1     *Check if 100
             BEQ     ADDDATA
             
+            BRA     INVALIDOPCODE
+            
 ADDADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -2005,7 +2185,7 @@ ADDDATA     CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     ADDSIZEL 
 
-ADDSIZEB    MOVE.B  (A0),D2 
+ADDSIZEB    MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.L  #$1, A0 
         
@@ -2057,6 +2237,8 @@ ADDAEA      MOVE.L  D0, D1
             CMP.L   #$38, D1     *Check if 111
             BEQ     ADDAADDRESSDATA
             
+            BRA     INVALIDOPCODE
+            
 ADDADATAREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
             MOVE.L  D1, D2      *Move value of Dn
@@ -2104,6 +2286,8 @@ ADDAADDRESSDATA MOVE.L  D0, D1
             CMP.L   #$4, D1     *Check if 100
             BEQ     ADDADATA
             
+            BRA     INVALIDOPCODE
+            
 ADDAADDRW   MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -2125,7 +2309,7 @@ ADDADATA    CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     ADDASIZEL 
 
-ADDASIZEB   MOVE.B  (A0),D2 
+ADDASIZEB   MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.L  #$1, A0 
         
@@ -2162,7 +2346,7 @@ ADDIEA      CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     ADDISIZEL 
 
-ADDISIZEB   MOVE.B  (A0),D2 
+ADDISIZEB   MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.L  #$1, A0 
         
@@ -2197,6 +2381,8 @@ ADDIDEST    MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     ADDIADDRESS
+            
+            BRA     INVALIDOPCODE
             
 ADDIDATAREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2234,6 +2420,8 @@ ADDIADDRESS MOVE.L  D0, D1
             
             CMP.L   #$1, D1     *Check if 001
             BEQ     ADDIADDRL
+            
+            BRA     INVALIDOPCODE
             
 ADDIADDRW   MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
@@ -2283,6 +2471,8 @@ SUBEADEST       MOVE.L  D0, D1
                 CMP.L   #$38, D1     *Check if 111
                 BEQ     SUBADDRESSD
                 
+                BRA     INVALIDOPCODE
+                
             
 SUBINADDRREGD MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2313,6 +2503,8 @@ SUBADDRESSD MOVE.L  D0, D1
             
             CMP.L   #$1, D1     *Check if 001
             BEQ     SUBADDRLD
+            
+            BRA     INVALIDOPCODE
             
 SUBADDRWD   MOVE.W  (A0),D3     *Move addr
             MOVE.B  #$6, D6     *Store type
@@ -2346,6 +2538,8 @@ SUBEADN     MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     SUBADDRESSDATA
+            
+            BRA     INVALIDOPCODE
                 
 SUBDATAREG  MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2394,6 +2588,8 @@ SUBADDRESSDATA MOVE.L  D0, D1
             CMP.L   #$4, D1     *Check if 100
             BEQ     SUBDATA
             
+            BRA     INVALIDOPCODE
+            
 SUBADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -2415,7 +2611,7 @@ SUBDATA     CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     SUBSIZEL 
 
-SUBSIZEB    MOVE.B  (A0),D2 
+SUBSIZEB    MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.L  #$1, A0 
         
@@ -2461,6 +2657,8 @@ MULSEA      MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     MULSADDRESSDATA
+            
+            BRA     INVALIDOPCODE
                 
 MULSDATAREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2502,6 +2700,8 @@ MULSADDRESSDATA MOVE.L  D0, D1
             CMP.L   #$4, D1     *Check if 100
             BEQ     MULSDATA
             
+            BRA     INVALIDOPCODE
+            
 MULSADDRW   MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -2523,7 +2723,7 @@ MULSDATA    CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     MULSSIZEL 
 
-MULSSIZEB   MOVE.B  (A0),D2 
+MULSSIZEB   MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.L  #$1, A0 
         
@@ -2570,6 +2770,8 @@ DIVUEA      MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     DIVUADDRESSDATA
+            
+            BRA     INVALIDOPCODE
                 
 DIVUDATAREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2611,6 +2813,8 @@ DIVUADDRESSDATA MOVE.L  D0, D1
             CMP.L   #$4, D1     *Check if 100
             BEQ     DIVUDATA
             
+            BRA     INVALIDOPCODE
+            
 DIVUADDRW   MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -2632,7 +2836,7 @@ DIVUDATA    CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     DIVUSIZEL 
 
-DIVUSIZEB   MOVE.B  (A0),D2 
+DIVUSIZEB   MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.L  #$1, A0 
         
@@ -2669,6 +2873,8 @@ LEAEA       MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     LEAADDRESS
+            
+            BRA     INVALIDOPCODE
             
 LEAINADDRREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2726,6 +2932,8 @@ CLREA       MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     CLRADDRESS            
+            
+            BRA     INVALIDOPCODE
 
 CLRDATAREG  MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2763,6 +2971,8 @@ CLRADDRESS  MOVE.L  D0, D1
             
             CMP.L   #$1, D1     *Check if 001
             BEQ     DIVUADDRL
+            
+            BRA     INVALIDOPCODE
             
 CLRADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
@@ -2811,6 +3021,8 @@ ANDEADEST       MOVE.L  D0, D1
                 CMP.L   #$38, D1     *Check if 111
                 BEQ     ANDADDRESSD
                 
+                BRA     INVALIDOPCODE
+                
             
 ANDINADDRREGD MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2842,6 +3054,8 @@ ANDADDRESSD MOVE.L  D0, D1
             CMP.L   #$1, D1     *Check if 001
             BEQ     ANDADDRLD
             
+            BRA     INVALIDOPCODE
+            
 ANDADDRWD   MOVE.W  (A0),D3     *Move addr
             MOVE.B  #$6, D6     *Store type
             ADDA.L  #$2, A0 
@@ -2871,6 +3085,8 @@ ANDEADN     MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     ANDADDRESSDATA
+            
+            BRA     INVALIDOPCODE
                 
 ANDDATAREG  MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2912,6 +3128,8 @@ ANDADDRESSDATA MOVE.L  D0, D1
             CMP.L   #$4, D1     *Check if 100
             BEQ     ANDDATA
             
+            BRA     INVALIDOPCODE
+            
 ANDADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -2933,7 +3151,7 @@ ANDDATA     CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     ANDSIZEL 
 
-ANDSIZEB    MOVE.B  (A0),D2 
+ANDSIZEB    MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.L  #$1, A0 
         
@@ -3010,6 +3228,8 @@ LSMEA       MOVE.L  D0, D1
             CMP.L   #$38, D1     *Check if 111
             BEQ     LSMADDRESS
             
+            BRA     INVALIDOPCODE
+            
 LSMINADDRREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
             MOVE.L  D1, D2      *Move value of an
@@ -3039,6 +3259,8 @@ LSMADDRESS  MOVE.L  D0, D1
             
             CMP.L   #$1, D1     *Check if 001
             BEQ     LSMADDRL
+            
+            BRA     INVALIDOPCODE
             
 LSMADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
@@ -3102,6 +3324,8 @@ ASMEA       MOVE.L  D0, D1
             CMP.L   #$38, D1     *Check if 111
             BEQ     ASMADDRESS
             
+            BRA     INVALIDOPCODE
+            
 ASMINADDRREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
             MOVE.L  D1, D2      *Move value of an
@@ -3131,6 +3355,8 @@ ASMADDRESS  MOVE.L  D0, D1
             
             CMP.L   #$1, D1     *Check if 001
             BEQ     LSMADDRL
+            
+            BRA     INVALIDOPCODE
             
 ASMADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
@@ -3195,6 +3421,8 @@ ROMEA       MOVE.L  D0, D1
             CMP.L   #$38, D1     *Check if 111
             BEQ     ROMADDRESS
             
+            BRA     INVALIDOPCODE
+            
 ROMINADDRREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
             MOVE.L  D1, D2      *Move value of an
@@ -3224,6 +3452,8 @@ ROMADDRESS  MOVE.L  D0, D1
             
             CMP.L   #$1, D1     *Check if 001
             BEQ     ROMADDRL
+            
+            BRA     INVALIDOPCODE
             
 ROMADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
@@ -3260,6 +3490,8 @@ CMPEA       MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     CMPADDRESSDATA
+            
+            BRA     INVALIDOPCODE
                 
 CMPDATAREG  MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -3308,6 +3540,8 @@ CMPADDRESSDATA MOVE.L  D0, D1
             CMP.L   #$4, D1     *Check if 100
             BEQ     CMPDATA
             
+            BRA     INVALIDOPCODE
+            
 CMPADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -3329,7 +3563,7 @@ CMPDATA     CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     CMPSIZEL 
 
-CMPSIZEB    MOVE.B  (A0),D2 
+CMPSIZEB    MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.L  #$1, A0 
         
@@ -3359,13 +3593,14 @@ CMPDNDEST   MOVE.W  D0, D1
             
             
             
-BCCEA       
+*BCCEA       
             
             
             
             
             
 JSREA       MOVE.L  D0, D1
+            MOVE.B  #-1, D6
             AND.L   #$38, D1    *Isolate source mode
 
             CMP.L   #$10, D1    *Check if 010
@@ -3373,6 +3608,8 @@ JSREA       MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     JSRADDRESS
+            
+            BRA     INVALIDOPCODE
             
 JSRINADDRREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -3389,6 +3626,8 @@ JSRADDRESS  MOVE.L  D0, D1
             
             CMP.L   #$1, D1     *Check if 001
             BEQ     JSRADDRL
+            
+            BRA     INVALIDOPCODE
             
 JSRADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
@@ -3444,6 +3683,10 @@ INPUTMESSAGE2   DC.B    'Now please type your ending address in hex format. Writ
 
 SPACEMESSAGE    DC.B    '           ', 0
 COMMAMESSAGE    DC.B    ', ', 0
+SLASHMESSAGE    DC.B    '/', 0
+
+INVALIDMESSAGE  DC.B    'DATA', 0
+DOLLARMESSAGE   DC.B    '$', 0
 
 ZEROMESSAGE     DC.B    '0', 0
 ONEMESSAGE      DC.B    '1', 0
@@ -3487,6 +3730,8 @@ ANMINUSOPENMESSAGE DC.B '-(', 0
 *~Font size~10~
 *~Tab type~1~
 *~Tab size~4~
+
+
 
 
 
