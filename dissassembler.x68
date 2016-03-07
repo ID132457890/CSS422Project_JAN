@@ -29,7 +29,6 @@ LOOP
     ADDA.W       #$2, A0
     
     MOVE.B      #-1, D4     *Start at invalid
-    
     JSR         CHECK1100    *Check for AND or MULS
     JSR         CHECK0000   *Check for ANDI, ADDI, BCHG, CMPI or MOVE  initial
     JSR         CHECK1110 *Check for LSx,ASx,ROx
@@ -125,7 +124,8 @@ INVALIDOPCODE   LEA         INVALIDMESSAGE, A1
                 MOVE.W      A6, D3            *Move opcode in D3
 INVALIDLOOP     ROL.W       #$4, D3             *Shift left to right position
                 MOVE.W      D3, D0              *Move to D0 for backup
-                AND.W       #$F, D3             *Isolate first byte
+                AND.W       #$F, D3             *Isolate first 
+                
                 MOVE.B      D3, D1              *Move byte to D1
                 MOVE.W      D0, D3              *Move original back to D2
                 AND.W       #$FFF0, D3          *Remove first 4 bits
@@ -565,7 +565,7 @@ DATAEA          CMP.L       #$1, D7
                 BEQ         ADDLONGS
                 
 ADDBYTES        MOVE.L      #$2, D7
-                MOVE.L      #$1, D5
+                MOVE.L      #$2, D5 *<-------------------------------------------------------------------------
                 BRA         DATAEALOOP
                 
 ADDWORDS        MOVE.L      #$4, D7
@@ -1795,7 +1795,7 @@ MOVEDATA    CMP.B   #$1,D7     *Compare if the size is a byte
 
 MOVESIZEB   MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.L  #$1, A0 
+            ADDA.L  #$2, A0  *<-----------------------------------------------------------------------------------
         
             BRA     MOVEDEST    *Branches to destination
 
@@ -2253,7 +2253,7 @@ ADDDATA     CMP.B   #$1,D7     *Compare if the size is a byte
 
 ADDSIZEB    MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.L  #$1, A0 
+            ADDA.L  #$2, A0 *<---------------------------------------------------------------------------
         
             BRA     ADDDNDEST *Branches to destination
 
@@ -2679,7 +2679,7 @@ SUBDATA     CMP.B   #$1,D7     *Compare if the size is a byte
 
 SUBSIZEB    MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.L  #$1, A0 
+            ADDA.L  #$2, A0 *<------------------------------------------------------------------------------------------
         
             BRA     SUBDNDEST *Branches to destination
 
@@ -2791,7 +2791,7 @@ MULSDATA    CMP.B   #$1,D7     *Compare if the size is a byte
 
 MULSSIZEB   MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.L  #$1, A0 
+            ADDA.L  #$2, A0 <---------------------------------------------------------------------
         
             BRA     MULSDEST *Branches to destination
 
@@ -3219,7 +3219,7 @@ ANDDATA     CMP.B   #$1,D7     *Compare if the size is a byte
 
 ANDSIZEB    MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.L  #$1, A0 
+            ADDA.L  #$2, A0 <---------------------------------------------------------
         
             BRA     ANDDNDEST *Branches to destination
 
@@ -3631,7 +3631,7 @@ CMPDATA     CMP.B   #$1,D7     *Compare if the size is a byte
 
 CMPSIZEB    MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.L  #$1, A0 
+            ADDA.L  #$2, A0 *<-------------------------------------------------------------------------- 
         
             BRA     CMPDNDEST *Branches to destination
 
@@ -3877,3 +3877,8 @@ ANMINUSOPENMESSAGE DC.B '-(', 0
 
 
 
+
+*~Font name~Courier New~
+*~Font size~10~
+*~Tab type~1~
+*~Tab size~4~
