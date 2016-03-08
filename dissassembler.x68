@@ -17,13 +17,15 @@ LOOP
     *Print the initial address
     JSR         PRINTADDRESS
     
+    *MOVEA.L     #0, A5
+    
     *Copy the opcode part to D0
     MOVE.W      (A0), D0
     
     *Copy the opcode to D1 for changes
     MOVE.W      (A0), D1
     
-    MOVE.W      D1, A6    *Keep original address in case there is an error
+    MOVEA.W      A0, A6    *Keep original address in case there is an error
     
     *Increase the address by 2, since that part has been read
     ADDA.W       #$2, A0
@@ -122,7 +124,7 @@ INVALIDOPCODE   LEA         INVALIDMESSAGE, A1
                 TRAP        #15
                 
                 MOVE.B      #$4, D6             *Put actual size in D6
-                MOVE.W      A6, D3            *Move opcode in D3
+                MOVE.W      (A6), D3            *Move opcode in D3
 INVALIDLOOP     ROL.W       #$4, D3             *Shift left to right position
                 MOVE.W      D3, D0              *Move to D0 for backup
                 AND.W       #$F, D3             *Isolate first byte
@@ -3665,7 +3667,6 @@ CMPDNDEST   MOVE.W  D0, D1
             
 BCCEA       MOVE.L  #-1, D6
             MOVE.W  D0, D1
-            MOVE.W  #-1, D6
             AND.W   #$FF, D1    *Isolate first byte
             
             CMP.W   #$0, D1
@@ -3674,13 +3675,18 @@ BCCEA       MOVE.L  #-1, D6
             CMP.W   #$FF, D1
             BEQ     BCCL
             
-            AND.W   #$80, D1
+            AND.W   #$80, D1    *Isolate first bit
             CMP.W   #$80, D1
             BEQ     BCCBS       *If negative, need further manipulation
             
+            MOVE.W  D0, D1
+            AND.W   #$FF, D1
+            SUB.B   #$2, D1     *Subtract 2
+            MOVE.W  A6, D5      *Move address
+            SUB.W   D1, D5      *Add from address
+            MOVE.W  D5, D1
             MOVE.W  D1, D2
-            ADD.W   #$2, D2
-            MOVE.B  #$7, D5
+            MOVE.L  #$7, D5  
             
             RTS
             
@@ -3688,26 +3694,41 @@ BCCBS       MOVE.W  D0, D1
             AND.W   #$FF, D1
             SUB.B   #$1, D1     *Subtract 1
             NOT.B   D1          *Flip all bits
-            SUB.B   #$2, D1     *Add 2
-            MOVEA.W A6, A5      *Backup address
-            SUB.W   D1, A5      *Add from address
-            MOVE.W  A5, D1
+            SUB.B   #$2, D1     *Subtract 2
+            MOVE.W  A6, D5      *Move address
+            SUB.W   D1, D5      *Add from address
+            MOVE.W  D5, D1
             MOVE.W  D1, D2
-            MOVE.B  #$7, D5  
+            MOVE.L  #$7, D5  
+            
+            RTS
+            
+BCCWS       SUB.W   #$1, D1     *Subtract 1
+            NOT.W   D1          *Flip all bits
+            SUB.W   #$2, D1     *Subtract 2
+            MOVE.W  A6, D5      *Move address
+            SUB.W   D1, D5      *Add from address
+            MOVE.W  D5, D1
+            MOVE.W  D1, D2
+            MOVE.L  #$7, D5  
             
             RTS
             
 BCCW        MOVE.W  (A0), D1
+            ADDA.L  #$2, A0
             CMP.W   #0, D1
-            BLT     BCCBS       *If negative, need further manipulation
+            BLT     BCCWS       *If negative, need further manipulation
             
+            ADD.B   #$2, D1     *Subtract 2
+            MOVE.W  A6, D5      *Move address
+            ADD.W   D5, D1      *Add from address
             MOVE.W  D1, D2
-            ADD.W   #$2, D2
-            MOVE.B  #$7, D5
+            MOVE.L  #$7, D5 
             
             RTS
    
 BCCL        MOVE.L  (A0), D2
+            ADDA.L  #$4, A0
             CMP.L   #0, D1
             BLT     BCCLS       *If negative, need further manipulation
             
