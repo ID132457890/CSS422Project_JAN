@@ -17,8 +17,6 @@ LOOP
     *Print the initial address
     JSR         PRINTADDRESS
     
-    *MOVEA.L     #0, A5
-    
     *Copy the opcode part to D0
     MOVE.W      (A0), D0
     
@@ -148,6 +146,10 @@ CLEARALL        CLR         D0
                 CLR         D5
                 CLR         D6
                 CLR         D7
+                
+                *MOVEA.L     #$0, A1
+                *MOVEA.L     #$0, A2
+                *MOVEA.L     #$0, A6
                 RTS
                 
 PRINTCOMMA      LEA         COMMAMESSAGE, A1
@@ -223,6 +225,65 @@ PRINTDESTINATION     ADD.B       #$1, D6             *Add 1 to size
                 
                 CMP.B       #$9, D6             *Check if data
                 BEQ         DATAEAD
+                
+                CMP.B       #$11, D6            *Check if list
+                BEQ         ADLISTEAD
+                
+ADLISTEAD       CLR         D3
+                CLR         D1
+                CLR         D6
+ADLISTEALOOPD   MOVE.B      (A2, D3), D1      *retrive element
+                CMP.B       #$0, D6
+                BNE         ADLISTSLASHD
+                
+ADLISTEALOOP2D  CMP.B       #7, D3              *Check if index less than 7
+                BLE         DLISTD
+                
+                BRA         ALISTD
+                
+DLISTD          CMP.B       #$1, D1         *Check if element 1
+                BNE         CHECKADLISTD
+                
+                LEA         DNMESSAGE, A1       *Show D
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      D1, D6              *Conserve num
+                MOVE.B      D3, D1              *Move counter to D1
+                MOVE.B      #3, D0              *Show n
+                TRAP        #15
+                
+                BRA         CHECKADLISTD
+                
+ALISTD          CMP.B       #$1, D1         *Check if element 1
+                BNE         CHECKADLISTD
+                
+                LEA         ANMESSAGE, A1       *Show A
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      D1, D6              *Conserve num
+                MOVE.B      D3, D1              *Move counter to D1
+                SUB.B       #8, D1              *Subtract 8
+                MOVE.B      #3, D0              *Show n
+                TRAP        #15
+                
+                BRA         CHECKADLISTD
+                
+CHECKADLISTD    ADD.B       #1, D3              *add counter
+                CMP.B       #16, D3
+                BNE         ADLISTEALOOPD
+                
+                RTS        
+                
+ADLISTSLASHD    CMP.B       #$0, D1
+                BEQ         ADLISTEALOOP2D
+                
+                LEA         SLASHMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                BRA         ADLISTEALOOP2D
                 
 DNEAD           LEA         DNMESSAGE, A1       *Show D
                 MOVE.B      #14, D0
@@ -379,90 +440,132 @@ PRINTSOURCE     ADD.B       #$1, D5             *Add 1 to size
                 CMP.B       #$9, D5             *Check if data
                 BEQ         DATAEA
                 
-                CMP.B       #$10, D5            *Check if list
+                CMP.B       #$11, D5            *Check if list
                 BEQ         ADLISTEA
                 
-                CMP.B       #$11, D5            *Check if list
+                CMP.B       #$12, D5            *Check if list
                 BEQ         DALISTEA
                 
-ADLISTEA        MOVE.B      (SP)+, D1           *Retrieve from stack
-                CMP.B       #7, D1
-                BLE         DLIST
-                BRA         ALIST
-                
-DLIST           LEA         DNMESSAGE, A1       *Show D
-                MOVE.B      #14, D0
-                TRAP        #15
-                
-                MOVE.B      #3, D0              *Show n
-                TRAP        #15
-                
-                BRA         CHECKADSP
-                
-ALIST           SUB.B       #8, D1              *Subtract 8
-                LEA         ANMESSAGE, A1       *Show A
-                MOVE.B      #14, D0
-                TRAP        #15
-                
-                MOVE.B      #3, D0              *Show n
-                TRAP        #15
-                
-                BRA         CHECKADSP
-                
-CHECKADSP       MOVE.B      (SP)+, D1           *Retrieve from stack
-                CMP.B       #$FF, D1            *Check if stack is done
+ADLISTEA        CLR         D2
+                CLR         D1
+                CLR         D5
+ADLISTEALOOP    MOVE.B      (A2, D2), D1      *retrive element
+                CMP.B       #$0, D5
                 BNE         ADLISTSLASH
                 
-                MOVE.B      #$FF, -(SP)         *If not, restore it to normal position
-                RTS
+ADLISTEALOOP2   CMP.B       #7, D2              *Check if index less than 7
+                BLE         DLIST
                 
-ADLISTSLASH     LEA         SLASHMESSAGE, A1
-                MOVE.B      #14, D0
-                TRAP        #15
+                BRA         ALIST
                 
-                BRA         ADLISTEA
+DLIST           CMP.B       #$1, D1         *Check if element 1
+                BNE         CHECKADLIST
                 
-DALISTEA        MOVE.B      (SP)+, D1           *Retrieve from stack
-                CMP.B       #7, D1
-                BLE         ALIST2
-                BRA         DLIST2
-                
-DLIST2          SUB.B       #8, D1
-                MOVE.L      #7, D0              *Dn is 7 - index
-                SUB.B       D1, D0
                 LEA         DNMESSAGE, A1       *Show D
                 MOVE.B      #14, D0
                 TRAP        #15
                 
+                MOVE.B      D1, D5              *Conserve num
+                MOVE.B      D2, D1              *Move counter to D1
                 MOVE.B      #3, D0              *Show n
                 TRAP        #15
                 
-                BRA         CHECKDASP
+                BRA         CHECKADLIST
                 
-ALIST2          MOVE.L      #7, D0              *An is 7 - index
-                SUB.B       D1, D0
+ALIST           CMP.B       #$1, D1         *Check if element 1
+                BNE         CHECKADLIST
+                
                 LEA         ANMESSAGE, A1       *Show A
                 MOVE.B      #14, D0
                 TRAP        #15
                 
+                MOVE.B      D1, D5              *Conserve num
+                MOVE.B      D2, D1              *Move counter to D1
+                SUB.B       #8, D1              *Subtract 8
                 MOVE.B      #3, D0              *Show n
                 TRAP        #15
                 
-                BRA         CHECKDASP
+                BRA         CHECKADLIST
                 
-CHECKDASP       MOVE.B      (SP)+, D1           *Retrieve from stack
-                CMP.B       #$FF, D1            *Check if stack is done
-                BNE         DALISTSLASH
+CHECKADLIST     ADD.B       #1, D2              *add counter
+                CMP.B       #16, D2
+                BNE         ADLISTEALOOP
                 
-                MOVE.B      #$FF, -(SP)         *If not, restore it to normal position
-                RTS
+                RTS        
                 
-DALISTSLASH     LEA         SLASHMESSAGE, A1
+ADLISTSLASH     CMP.B       #$0, D1
+                BEQ         ADLISTEALOOP2
+                
+                LEA         SLASHMESSAGE, A1
                 MOVE.B      #14, D0
                 TRAP        #15
                 
-                BRA         DALISTEA
+                BRA         ADLISTEALOOP2
+               
                 
+DALISTEA        CLR         D2
+                CLR         D1
+                CLR         D5
+DALISTEALOOP    MOVE.B      (A2, D2), D1      *retrive element
+                CMP.B       #$0, D5
+                BNE         DALISTSLASH
+                
+DALISTEALOOP2   CMP.B       #7, D2              *Check if index less than 7
+                BLE         ALIST2
+                
+                BRA         DLIST2
+                
+DLIST2          CMP.B       #$1, D1         *Check if element 1
+                BNE         CHECKDALIST
+                
+                LEA         DNMESSAGE, A1       *Show D
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      D1, D5              *Conserve num
+                MOVE.B      D2, D1              *Move counter to D1
+                SUB.B       #8, D1              *Subtract 8
+                MOVE.B      D1, D0              *Move counter to d0
+                MOVE.B      #7, D1              *Move 7 to d1
+                SUB.B       D0, D1              *Do 7 - counter
+                MOVE.B      #3, D0              *Show n
+                TRAP        #15
+                
+                BRA         CHECKDALIST
+                
+ALIST2          CMP.B       #$1, D1         *Check if element 1
+                BNE         CHECKDALIST
+                
+                LEA         ANMESSAGE, A1       *Show A
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      D1, D5              *Conserve num
+                MOVE.B      D2, D1              *Move counter to D1
+                MOVE.B      D1, D0              *Move counter to d0
+                MOVE.B      #7, D1              *Move 7 to d1
+                SUB.B       D0, D1              *Do 7 - counter
+                MOVE.B      #3, D0              *Show n
+                TRAP        #15
+                
+                BRA         CHECKDALIST
+                
+CHECKDALIST     ADD.B       #1, D2              *add counter
+                CMP.B       #16, D2
+                BNE         DALISTEALOOP
+                
+                RTS        
+                
+DALISTSLASH     CMP.B       #$0, D1
+                BEQ         DALISTEALOOP2
+                
+                LEA         SLASHMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                BRA         DALISTEALOOP2
+
+                                
 DNEA            LEA         DNMESSAGE, A1       *Show D
                 MOVE.B      #14, D0
                 TRAP        #15
@@ -1563,7 +1666,7 @@ CHECKOPS        *******Check for NOP and RTS since they are constant
                 CMP.W   #$110, D1
                 BNE     OPJSR
               
-                RTS
+                BRA     INVALIDOPCODE
                 
  
 OPNOP           LEA NOPMESSAGE,A1
@@ -1824,7 +1927,7 @@ MOVEDEST    MOVE.W  D0, D1
             CMP.W   #$18, D1 *Checks (An)+
             BEQ     MOVEPOSTADDRD
         
-            CMP.W   #$100, D1 *Checks -(An)
+            CMP.W   #$20, D1 *Checks -(An)
             BEQ     MOVEPREADDRD
         
             CMP.W   #$1C0, D1 *Checks Addressing Mode
@@ -1913,7 +2016,7 @@ MOVEQEA         MOVE.L  D0, D1
                 
                 
                 
-                
+registers       DS.L    16
                 
 MOVEMEA         MOVE.L  D0, D1
                 AND.W   #$400, D1       *Isolate dr field 
@@ -1925,38 +2028,41 @@ MOVEMEA         MOVE.L  D0, D1
                 
 MOVEMRM         MOVE.W  (A0), D2
                 ADDA.L  #$2, A0
+                LEA     registers, A2   *Store array
                 MOVE.L  #$10, D5
-                MOVEA.L #$0, A2     *Counter
+                MOVE.L  #$0, D6     *Counter
 MOVEMRLOOP      MOVE.W  D2, D1      *For editing
                 AND.W   #$1, D1
                 
                 CMP.W   #$1, D1
                 BNE     MOVEMNOONES
                 
-                MOVE.W  A2, -(SP)   *Move counter to stack
-                ADDA.W  #1, A2
-                ROR.W   #$1, D2     *Shift to right
+                MOVE.B  #$1, (A2, D6)   *Insert 1 to array
+                ADD.W   #1, D6
+                ASR.W   #$1, D2     *Shift to right
                 
-                CMP.W   #16, A2
+                CMP.W   #16, D6
                 BNE     MOVEMRLOOP
                 
                 BRA     MOVEMMDEST
                 
-MOVEMNOONES     ADDA.W  #1, A2     *Add counter
-                ROR.W   #$1, D2     *Shift to right
+MOVEMNOONES     MOVE.B  #$0, (A2, D6)
+                ADD.W  #1, D6     *Add counter
+                ASR.W   #$1, D2     *Shift to right
                 
-                CMP.W   #16, A2
+                CMP.W   #16, D6
                 BNE     MOVEMRLOOP
                 
                 BRA     MOVEMMDEST
                 
-MOVEMMDEST      MOVE.L  D0, D1
+MOVEMMDEST      CLR     D6
+                MOVE.L  D0, D1
                 AND.L   #$38, D1    *Isolate source mode
             
                 CMP.L   #$10, D1    *Check if 010
                 BEQ     MOVEMINADDRREGD
                 
-                CMP.W   #$100, D1 *Checks -(An)
+                CMP.W   #$20, D1 *Checks -(An)
                 BEQ     MOVEMPREADDRD
             
                 CMP.L   #$38, D1     *Check if 111
@@ -1974,7 +2080,7 @@ MOVEMINADDRREGD MOVE.L  D0, D1
 MOVEMPREADDRD   MOVE.L  D0, D1
                 AND.L   #$7, D1     *Isolate register
                 MOVE.L  D1, D3      *Move value of an
-                MOVE.B  #$5, D6     *Move type of source
+                MOVE.B  #$5, D6     *Move type of dest
                 MOVE.L  #$11, D5    *flip mask
             
                 RTS
@@ -2002,7 +2108,39 @@ MOVEMADDRLD     MOVE.L  (A0),D3     *Move addr
             
                 RTS
                 
-MOVEMMR         MOVE.L  D0, D1
+                
+                
+     
+MOVEMMR         MOVE.W  (A0), D3
+                ADDA.L  #$2, A0
+                LEA     registers, A2   *Store array
+                MOVE.L  #$10, D6
+                MOVE.L  #$0, D5     *Counter
+MOVEMRLOOPD     MOVE.W  D3, D1      *For editing
+                AND.W   #$1, D1
+                
+                CMP.W   #$1, D1
+                BNE     MOVEMNOONE
+                
+                MOVE.B  #$1, (A2, D5)   *Insert 1 to array
+                ADD.W   #1, D5
+                ASR.W   #$1, D3     *Shift to right
+                
+                CMP.W   #16, D5
+                BNE     MOVEMRLOOPD
+                
+                BRA     MOVEMRDEST
+                
+MOVEMNOONE      MOVE.B  #$0, (A2, D5)
+                ADD.W  #1, D5     *Add counter
+                ASR.W   #$1, D3     *Shift to right
+                
+                CMP.W   #16, D5
+                BNE     MOVEMRLOOPD
+                
+                BRA     MOVEMRDEST
+                
+MOVEMRDEST      MOVE.L  D0, D1
                 AND.L   #$38, D1    *Isolate source mode
             
                 CMP.L   #$10, D1    *Check if 010
@@ -2021,14 +2159,14 @@ MOVEMINADDRREG  MOVE.L  D0, D1
                 MOVE.L  D1, D2      *Move value of an
                 MOVE.B  #$3, D5     *Move type of source
             
-                BRA     MOVEMRDEST 
+                RTS 
                 
 MOVEMPLUSADDRREG MOVE.L  D0, D1
                 AND.L   #$7, D1     *Isolate register
                 MOVE.L  D1, D2      *Move value of an
                 MOVE.B  #$4, D5     *Move type of source
             
-                BRA     MOVEMRDEST
+                RTS
             
 MOVEMADDRESS    MOVE.L  D0, D1
                 AND.L   #$7, D1     *Isolate register
@@ -2039,43 +2177,27 @@ MOVEMADDRESS    MOVE.L  D0, D1
                 CMP.L   #$1, D1     *Check if 001
                 BEQ     MOVEMADDRL
                 
-                BRA     INVALIDOPCODE
+                RTS
             
 MOVEMADDRW      MOVE.W  (A0),D2     *Move addr
                 MOVE.B  #$6, D5     *Store type
                 ADDA.L  #$2, A0 
             
-                BRA     MOVEMRDEST 
+                RTS
 
 MOVEMADDRL      MOVE.L  (A0),D2     *Move addr
                 MOVE.B  #$7, D5     *Store type
                 ADDA.L  #$4, A0
             
-                BRA     MOVEMRDEST
-                
-MOVEMRDEST      MOVE.W  (A0), D3
-                ADDA.L  #$2, A0
-                MOVE.L  #$10, D6
-                MOVE.L  #$0, D0     *Counter
-MOVEMRDESTLOOP  MOVE.W  D3, D1      *For editing
-                AND.W   #$1, D1
-                
-                CMP.W   #$1, D1
-                BNE     MOVEMNOONE
-                
-                MOVE.B  D0, -(SP)   *Move counter to stack
-                ADD.B   #1, D0
-                ROR.W   #$1, D3     *Shift to right
-                
-                CMP.W   #16, D0
-                BNE     MOVEMRDESTLOOP
-                
                 RTS
+
                 
-MOVEMNOONE      ADD.L   #1, D0     *Add counter
-                ROR.W   #$1, D3     *Shift to right
                 
-                BRA     MOVEMRDESTLOOP
+                
+                
+                
+
+               
                 
                 
                 
@@ -3686,7 +3808,7 @@ BCCEA       MOVE.L  #-1, D6
             SUB.W   D1, D5      *Add from address
             MOVE.W  D5, D1
             MOVE.W  D1, D2
-            MOVE.L  #$7, D5  
+            MOVE.L  #$6, D5  
             
             RTS
             
@@ -3699,7 +3821,7 @@ BCCBS       MOVE.W  D0, D1
             SUB.W   D1, D5      *Add from address
             MOVE.W  D5, D1
             MOVE.W  D1, D2
-            MOVE.L  #$7, D5  
+            MOVE.L  #$6, D5  
             
             RTS
             
@@ -3710,7 +3832,7 @@ BCCWS       SUB.W   #$1, D1     *Subtract 1
             SUB.W   D1, D5      *Add from address
             MOVE.W  D5, D1
             MOVE.W  D1, D2
-            MOVE.L  #$7, D5  
+            MOVE.L  #$6, D5  
             
             RTS
             
@@ -3723,7 +3845,7 @@ BCCW        MOVE.W  (A0), D1
             MOVE.W  A6, D5      *Move address
             ADD.W   D5, D1      *Add from address
             MOVE.W  D1, D2
-            MOVE.L  #$7, D5 
+            MOVE.L  #$6, D5 
             
             RTS
    
@@ -3862,7 +3984,7 @@ ANMESSAGE       DC.B    'A', 0
 ANIOPENMESSAGE  DC.B    '(A', 0
 ANICLOSEMESSAGE DC.B    ')', 0
 ANPLUSCLOSEMESSAGE DC.B ')+', 0
-ANMINUSOPENMESSAGE DC.B '-(', 0
+ANMINUSOPENMESSAGE DC.B '-(A', 0
 
     END    START        ; last line of source
    
@@ -3882,6 +4004,8 @@ ANMINUSOPENMESSAGE DC.B '-(', 0
 *~Font size~10~
 *~Tab type~1~
 *~Tab size~4~
+
+
 
 
 
