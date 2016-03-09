@@ -1752,7 +1752,9 @@ OPLEA
                 LEA LEAMESSAGE,A1
                 MOVE.B  #$11, D4
                 
-                BRA     SIZEL           *It's always long
+                MOVE.B  #$0, D7
+                RTS
+                *BRA     SIZEL           *It's always long
                 
 OPMOVEM         LEA OPMOVEMMESSAGE,A1
                 MOVE.B  #$3, D4
