@@ -1225,7 +1225,8 @@ OPANDI          LEA     ANDIMESSAGE, A1 *Store the ANDI message
 *                                            Subroutine: CHECK1110
 *Description: Checks if opcode word starts with the binary 1110. If true it identifies if it is LSR/LSL,ASR/ASL,ROR/ROL
 *----------------------------------------------------------------------------------------------------
-CHECK1110       AND.W   #$F000, D1      *Isolates the first 4 spaces
+CHECK1110       MOVE.W  D0, D1
+                AND.W   #$F000, D1      *Isolates the first 4 spaces
                 CMP.W   #$E000, D1      *Checks if the first 4 spaces are 1110
                 
                 BEQ     CHECKLAR        *If true, then it's LSR, ASR or ROR (and left versions)
