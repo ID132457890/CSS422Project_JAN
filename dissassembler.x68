@@ -94,21 +94,17 @@ ASKFORCONTINUE  LEA         CONTINUEMESSAGE, A1
                 MOVE.B      #5, D0  *Read y/n
 ASKLOOP         TRAP        #15
                 
-                CMP.B       #$79, D1    *y
+                CMP.B       #$D, D1    *n
                 BEQ         YESCONTINUE
-                
-                CMP.B       #$6E, D1    *n
-                BEQ         NOCONTINUE
-                
-                BRA         ASKLOOP
+                BRA ASKLOOP
+             
                 
 YESCONTINUE     JSR         EMPTYLINE
                 MOVEA.L     #$0, A3
                 BRA         LOOP
                 
-NOCONTINUE      JSR         EMPTYLINE
-                BRA         OUTPUTEND
-    
+
+
 INVALIDOPCODE   LEA         INVALIDMESSAGE, A1
                 MOVE.B      #14, D0
                 TRAP        #15
@@ -720,7 +716,10 @@ DATAEALOOP2     MOVE.L      D2, D0              *Move to D0 for backup
 
 INPUT           LEA         INPUTMESSAGE, A1    *Show the first line
                 MOVE.B      #13, D0
-                TRAP        #15      
+                TRAP        #15    
+                LEA         INPUTMESSAGE1, A1
+                MOVE.B      #13, D0
+                TRAP        #15  
 
 INPUTLOOP       MOVE.B      #5, D0              *Wait for user input (character)
                 TRAP        #15
@@ -790,26 +789,53 @@ EMPTYLINE       LEA         EMPTYLINEMESSAGE, A1  *Empty line
 *----------------------------------------------------------------------------------------------------
 
 OUTPUTEND       LEA         ENDMESSAGE, A1
-                MOVE.B      #14, D0
-                TRAP        #15
-                SIMHALT
+                MOVE.B      #13, D0
+                TRAP        #15
+                
+   
+        
 
-*----------------------------------------------------------------------------------------------------
-*                                           Subroutine: PRINTADDRESS
+ENDLOOP    
+                MOVE.B #5, D0
+                TRAP #15
+                CMP.B #$6E,D1
+                
+                BEQ DONE
+                
+                CMP.B #$79,D1                
+                BEQ TESTNEWRANGE                
+                BRA ENDLOOP
+TESTNEWRANGE    
+                *start next line on a new line
+                MOVE.B #14,D0   
+                LEA NEWLINE,A1
+                TRAP #15          
+                
+                *zero out memory 
+                JSR CLEARALL      
+                
+                *start program over          
+                BRA START
+DONE SIMHALT   
+
+*----------------------------------------------------------------------------------------------------*                                           
+*Subroutine: PRINTADDRESS
 *Description: Prints the current address the disassembler is on
 *----------------------------------------------------------------------------------------------------
 
 PRINTADDRESS    MOVE.L      A0, D2              *Move current address to D2
                 MOVE.L      A5, D5              *Move address size
-                ADD.B       #$1, D5             *Add 1 to size
-                CMP.L       #$5, D5             *Check if the length is >4
+                CMP.L       #$1000, A0
+                BLT     ADDONETOSIZE
+CONTINUEPRINTADDRESS                CMP.L       #$5, D5             *Check if the length is >4
                 BGT         PRINTLONGADDRESS    *If yes, it's a long address
 
                 CMP.L       #$3, D5             *Check if the length is >2
                 BGT         PRINTWORDADDRESS    *If yes, it's a word address
                 
                 BRA         PRINTBYTEADDRESS    *If not, it's a byte address
-                
+ADDONETOSIZE    ADD.B   #$1,D5    *ADD ONE TO THE SIZE 
+                BRA CONTINUEPRINTADDRESS       
 PRINTLONGADDRESS    ROL.L   #$4, D2             *Shift by 4 bits
                     MOVE.L  D2, D7              *Move to D7 for backup
                     AND.L   #$F, D2             *Isolate first byte
@@ -3949,11 +3975,11 @@ BYTEMESSAGE     DC.B    '.B', 0
 WORDMESSAGE     DC.B    '.W', 0
 LONGMESSAGE     DC.B    '.L', 0
 
-INPUTMESSAGE    DC.B    'Welcome to JAN disassembler. Please type your addresses in this format: "starting address", "ending address". (period included)', 0
-INPUTMESSAGE2   DC.B    'Now please type your ending address in hex format. Write a . (period) when done.', 0
+INPUTMESSAGE    DC.B    'Welcome to JAN disassembler. Please type your addresses in this format:', $0D,$0A,0
+INPUTMESSAGE1   DC.B    '"starting address", "ending address". (period included)', 0
 
-CONTINUEMESSAGE DC.B    'Section ended. Do you want to continue? (y/n)', 0
-ENDMESSAGE      DC.B    'All done!! Thank you for using JAN disassembler'
+CONTINUEMESSAGE DC.B    'Section ended. Press ENTER to continue?', 0
+ENDMESSAGE      DC.B    'All done!! Thank you for using JAN disassembler. Continue? (y/n)'
 
 SPACEMESSAGE    DC.B    '           ', 0
 COMMAMESSAGE    DC.B    ', ', 0
@@ -4026,3 +4052,8 @@ ANMINUSOPENMESSAGE DC.B '-(A', 0
 
 
 
+
+*~Font name~Courier New~
+*~Font size~10~
+*~Tab type~1~
+*~Tab size~4~
