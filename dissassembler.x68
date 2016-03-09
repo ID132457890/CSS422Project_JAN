@@ -790,7 +790,8 @@ EMPTYLINE       LEA         EMPTYLINEMESSAGE, A1  *Empty line
 
 OUTPUTEND       LEA         ENDMESSAGE, A1
                 MOVE.B      #13, D0
-                TRAP        #15
+                TRAP        #15
+
                 
    
         
@@ -802,7 +803,7 @@ ENDLOOP
                 
                 BEQ DONE
                 
-                CMP.B #$79,D1                
+                CMP.B #$79,D1                
                 BEQ TESTNEWRANGE                
                 BRA ENDLOOP
 TESTNEWRANGE    
@@ -815,10 +816,12 @@ TESTNEWRANGE
                 JSR CLEARALL      
                 
                 *start program over          
-                BRA START
+                BRA START
+
 DONE SIMHALT   
 
-*----------------------------------------------------------------------------------------------------*                                           
+
+*----------------------------------------------------------------------------------------------------*                                           
 *Subroutine: PRINTADDRESS
 *Description: Prints the current address the disassembler is on
 *----------------------------------------------------------------------------------------------------
@@ -3975,7 +3978,7 @@ BYTEMESSAGE     DC.B    '.B', 0
 WORDMESSAGE     DC.B    '.W', 0
 LONGMESSAGE     DC.B    '.L', 0
 
-INPUTMESSAGE    DC.B    'Welcome to JAN disassembler. Please type your addresses in this format:', $0D,$0A,0
+INPUTMESSAGE    DC.B    'Welcome to JAN disassembler. Please type your addresses in this format:', $0D,$0A,0
 INPUTMESSAGE1   DC.B    '"starting address", "ending address". (period included)', 0
 
 CONTINUEMESSAGE DC.B    'Section ended. Press ENTER to continue?', 0
@@ -4030,6 +4033,7 @@ ANMINUSOPENMESSAGE DC.B '-(A', 0
 *~Font size~10~
 *~Tab type~1~
 *~Tab size~4~
+
 
 
 
