@@ -343,7 +343,11 @@ ANMINUSEAD      LEA         ANMINUSOPENMESSAGE, A1  *Show -(A
                 
                 RTS
                 
-XXXWEAD         MOVE.B      #$4, D6             *Put actual size in D5
+XXXWEAD         LEA         DOLLARMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+
+                MOVE.B      #$4, D6             *Put actual size in D5
 XXXWEALOOPD     ROL.W       #$4, D3             *Shift left to right position
                 MOVE.W      D3, D0              *Move to D0 for backup
                 AND.W       #$F, D3             *Isolate first byte
@@ -359,7 +363,11 @@ XXXWEALOOPD     ROL.W       #$4, D3             *Shift left to right position
                 
                 RTS
                 
-XXXLEAD         MOVE.B      #$8, D6             *Put actual size in D5
+XXXLEAD         LEA         DOLLARMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+
+                MOVE.B      #$8, D6             *Put actual size in D5
 XXXLEALOOPD     ROL.L       #$4, D3             *Shift left to right position
                 MOVE.L      D3, D0              *Move to D0 for backup
                 AND.L       #$F, D3             *Isolate first byte
@@ -375,7 +383,15 @@ XXXLEALOOPD     ROL.L       #$4, D3             *Shift left to right position
                 
                 RTS
      
-DATAEAD         CMP.L       #$1, D7
+DATAEAD         LEA         POUNDMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                LEA         DOLLARMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+
+                CMP.L       #$1, D7
                 BEQ         ADDBYTE
                 
                 CMP.L       #$2, D7
@@ -624,7 +640,11 @@ ANMINUSEA       LEA         ANMINUSOPENMESSAGE, A1  *Show -(A
                 
                 RTS
                 
-XXXWEA          MOVE.B      #$4, D5             *Put actual size in D5
+XXXWEA          LEA         DOLLARMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+
+                MOVE.B      #$4, D5             *Put actual size in D5
 XXXWEALOOP      ROL.W       #$4, D2             *Shift left to right position
                 MOVE.W      D2, D0              *Move to D0 for backup
                 AND.W       #$F, D2             *Isolate first byte
@@ -640,7 +660,11 @@ XXXWEALOOP      ROL.W       #$4, D2             *Shift left to right position
                 
                 RTS
                 
-XXXLEA          MOVE.B      #$8, D5             *Put actual size in D5
+XXXLEA          LEA         DOLLARMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+
+                MOVE.B      #$8, D5             *Put actual size in D5
 XXXLEALOOP      ROL.L       #$4, D2             *Shift left to right position
                 MOVE.L      D2, D0              *Move to D0 for backup
                 AND.L       #$F, D2             *Isolate first byte
@@ -656,7 +680,15 @@ XXXLEALOOP      ROL.L       #$4, D2             *Shift left to right position
                 
                 RTS
                 
-DATAEA          CMP.L       #$1, D7
+DATAEA          LEA         POUNDMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                LEA         DOLLARMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+
+                CMP.L       #$1, D7
                 BEQ         ADDBYTES
                 
                 CMP.L       #$2, D7
@@ -828,18 +860,20 @@ DONE SIMHALT
 
 PRINTADDRESS    MOVE.L      A0, D2              *Move current address to D2
                 MOVE.L      A5, D5              *Move address size
-                CMP.L       #$1000, A0
-                BLT     ADDONETOSIZE
-CONTINUEPRINTADDRESS                CMP.L       #$5, D5             *Check if the length is >4
+                *ADD.L       #$1, D5             *Add 1 to size
+                CMP.L       #$4, D5             *Check if the length is >4
                 BGT         PRINTLONGADDRESS    *If yes, it's a long address
 
-                CMP.L       #$3, D5             *Check if the length is >2
+                CMP.L       #$2, D5             *Check if the length is >2
                 BGT         PRINTWORDADDRESS    *If yes, it's a word address
                 
                 BRA         PRINTBYTEADDRESS    *If not, it's a byte address
-ADDONETOSIZE    ADD.B   #$1,D5    *ADD ONE TO THE SIZE 
-                BRA CONTINUEPRINTADDRESS       
-PRINTLONGADDRESS    ROL.L   #$4, D2             *Shift by 4 bits
+                
+PRINTLONGADDRESS    MOVE.L  #$8, D7
+                    SUB.L   D5, D7
+                    MULS.W  #$4, D7
+                    ROL.L   D7, D2
+PLAL                ROL.L   #$4, D2             *Shift by 4 bits
                     MOVE.L  D2, D7              *Move to D7 for backup
                     AND.L   #$F, D2             *Isolate first byte
                     MOVE.B  D2, D1              *Move byte to D1
@@ -850,11 +884,15 @@ PRINTLONGADDRESS    ROL.L   #$4, D2             *Shift by 4 bits
                     JSR     COMPAREADDRESS        *Print the address
                     
                     CMP.L   #$0, D5             *Check if the address length is 0
-                    BNE     PRINTLONGADDRESS    *If not, then loop again
+                    BNE     PLAL                *If not, then loop again
                     
                     BRA     PRINTSPACE          *If yes, then stop and print empty line
                     
-PRINTWORDADDRESS    ROL.W   #$4, D2             *Shift by 4 bits
+PRINTWORDADDRESS    MOVE.L  #$4, D7
+                    SUB.W   D5, D7
+                    MULS.W  #$4, D7
+                    ROL.W   D7, D2
+PWAL                ROL.W   #$4, D2             *Shift by 4 bits
                     MOVE.L  D2, D7              *Move to D7 for backup
                     AND.L   #$F, D2             *Isolate first byte
                     MOVE.B  D2, D1              *Move byte to D1
@@ -865,11 +903,15 @@ PRINTWORDADDRESS    ROL.W   #$4, D2             *Shift by 4 bits
                     JSR     COMPAREADDRESS        *Print the address
                     
                     CMP.W   #$0, D5             *Check if the address length is 0
-                    BNE     PRINTWORDADDRESS    *If not, then loop again
+                    BNE     PWAL                *If not, then loop again
                     
                     BRA     PRINTSPACE          *If yes, then stop and print empty line
                     
-PRINTBYTEADDRESS    ROL.L   #$4, D2             *Shift by 4 bits
+PRINTBYTEADDRESS    MOVE.L  #$2, D7
+                    SUB.W   D5, D7
+                    MULS.W  #$4, D7
+                    ROL.B   D7, D2
+PBAL                ROL.B   #$4, D2             *Shift by 4 bits
                     MOVE.L  D2, D7              *Move to D7 for backup
                     AND.L   #$F, D2             *Isolate first byte
                     MOVE.B  D2, D1              *Move byte to D1
@@ -880,7 +922,7 @@ PRINTBYTEADDRESS    ROL.L   #$4, D2             *Shift by 4 bits
                     JSR     COMPAREADDRESS        *Print the address
                     
                     CMP.B   #$0, D5             *Check if the address length is 0
-                    BNE     PRINTBYTEADDRESS    *If not, then loop again
+                    BNE     PBAL                *If not, then loop again
                     
                     BRA     PRINTSPACE          *If yes, then stop and print empty line
                     
@@ -3979,7 +4021,7 @@ WORDMESSAGE     DC.B    '.W', 0
 LONGMESSAGE     DC.B    '.L', 0
 
 INPUTMESSAGE    DC.B    'Welcome to JAN disassembler. Please type your addresses in this format:', $0D,$0A,0
-INPUTMESSAGE1   DC.B    '"starting address", "ending address". (period included)', 0
+INPUTMESSAGE1   DC.B    '"starting address","ending address". (period included)', 0
 
 CONTINUEMESSAGE DC.B    'Section ended. Press ENTER to continue?', 0
 ENDMESSAGE      DC.B    'All done!! Thank you for using JAN disassembler. Continue? (y/n)'
@@ -3990,6 +4032,7 @@ SLASHMESSAGE    DC.B    '/', 0
 
 INVALIDMESSAGE  DC.B    'DATA', 0
 DOLLARMESSAGE   DC.B    '$', 0
+POUNDMESSAGE    DC.B    '#', 0
 
 ZEROMESSAGE     DC.B    '0', 0
 ONEMESSAGE      DC.B    '1', 0
@@ -4061,3 +4104,5 @@ ANMINUSOPENMESSAGE DC.B '-(A', 0
 *~Font size~10~
 *~Tab type~1~
 *~Tab size~4~
+
+
