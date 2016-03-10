@@ -761,6 +761,22 @@ CHECKIFCOMMA    CMP.B       #$2C, D1            *If not, check if it's a comma
                 
 CHECKIFPERIOD   CMP.B       #$2E, D1            *If not, check if it's a period
                 BEQ         PERIODINPUT         *If yes, it's a period
+                
+CHECKBACKSPACE  CMP.B       #$8, D1             *If not, check if backspace
+                BEQ         BACKSPACEINPUT
+                
+CHECKLCA        CMP.B       #$61, D1
+                BGE         CHECKLCZ
+                
+                BRA         CHECKMOREA
+                
+CHECKLCZ        CMP.B       #$7A, D1
+                BLE         DECREASELC
+                
+                BRA         CHECKMOREA
+                
+DECREASELC      SUB.W       #$20, D1
+                BRA         CHECKMOREA
         
 CHECKMOREA      CMP.B       #$41, D1            *Check if letter better than A
                 BGE         CHECKLESSF          *If yes, check if less than F
@@ -790,6 +806,28 @@ COMMAINPUT      ADD.B       #$1, D4             *Add 1 to D4 to show that the en
 PERIODINPUT     MOVEA.L     D2, A0              *Move the starting address to A0
                 MOVEA.L     D3, A4              *Move the ending address to A4
                 BRA         EMPTYLINE
+                
+BACKSPACEINPUT  CMP.B       #$0, D4             *Check if starting address or not
+                BEQ         BACKSTART
+                
+                BRA         BACKEND
+                
+BACKSTART       ASR.L       #$4, D2             *Shift to right
+                SUB.L       #$1, D5             *Subtract size
+                SUBA.L       #$1, A5
+                
+                BRA         INPUTLOOP
+                
+BACKEND         CMP.B       #$0, D6
+                BEQ         BACKCOMMA
+                
+                ASR.L       #$4, D3             *Shift to right
+                SUB.L       #$1, D6             *Subtract size
+                
+                BRA         INPUTLOOP
+                
+BACKCOMMA       MOVE.L      #$0, D4
+                BRA         INPUTLOOP
         
 DOREST          CMP.B       #$0, D4             *Check if it's starting or ending
                 BEQ         STARTINGADDRESS     *If yes, it's part of starting address
@@ -4107,5 +4145,6 @@ ANMINUSOPENMESSAGE DC.B '-(A', 0
 *~Font size~10~
 *~Tab type~1~
 *~Tab size~4~
+
 
 
