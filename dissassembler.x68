@@ -9,6 +9,14 @@ START:                  ; first instruction of program
 
 *----------------------------------main--------------------------
     *Ask for input
+    JSR         CLEARALL
+    MOVEA.L     #$0, A1
+    MOVEA.L     #$0, A2
+    MOVEA.L     #$0, A3
+    MOVEA.L     #$0, A4
+    MOVEA.L     #$0, A5
+    MOVEA.L     #$0, A6
+    MOVEA.L     #$0, A7
     JSR         INPUT
     
 LOOP    
@@ -789,6 +797,8 @@ CHECKLESSF      CMP.B       #$46, D1            *Check if less than F
 CHECKMORE0      CMP.B       #$30, D1            *If not, then check if number better than 0
                 BGE         CHECKIFLESS9        *If yes, check if less than 9
                 
+                BRA         INPUTLOOP
+                
 CHECKIFLESS9    CMP.B       #$39, D1            *Check if less than 9
                 BLE         NUMBERINPUT         *If yes, then it's a number input
                 
@@ -803,14 +813,21 @@ NUMBERINPUT     SUB.B       #$30, D1            *Subtract 30 from D1 (since it's
 COMMAINPUT      ADD.B       #$1, D4             *Add 1 to D4 to show that the ending address
                 BRA         INPUTLOOP 
                 
-PERIODINPUT     MOVEA.L     D2, A0              *Move the starting address to A0
+PERIODINPUT     CMP.L       D2, D3
+                BLT         SWITCHINPUT
+                
+                MOVEA.L     D2, A0              *Move the starting address to A0
                 MOVEA.L     D3, A4              *Move the ending address to A4
+                BRA         EMPTYLINE
+                
+SWITCHINPUT     MOVEA.L     D2, A4              *Move the starting address to A0
+                MOVEA.L     D3, A0              *Move the ending address to A4
                 BRA         EMPTYLINE
                 
 BACKSPACEINPUT  CMP.B       #$0, D4             *Check if starting address or not
                 BEQ         BACKSTART
                 
-                BRA         BACKEND
+                BEQ         BACKEND
                 
 BACKSTART       ASR.L       #$4, D2             *Shift to right
                 SUB.L       #$1, D5             *Subtract size
@@ -1781,10 +1798,12 @@ CHECKOPS        *******Check for NOP and RTS since they are constant
  
 OPNOP           LEA NOPMESSAGE,A1
                 MOVE.B  #$0, D4
+                MOVE.B  #$0, D7
                 RTS    
 OPJSR
                 LEA JSRMESSAGE,A1
                 MOVE.B  #$22, D4
+                MOVE.B  #$0, D7
                 RTS
 OPLEA  
                 LEA LEAMESSAGE,A1
@@ -1800,19 +1819,33 @@ OPMOVEM         LEA OPMOVEMMESSAGE,A1
                 MOVE.W  D0, D1
                 AND.W   #$40, D1       *Isolate SIZE part
                 CMP.W   #$0, D1         *If SIZE 0
-                BEQ     SIZEW           *If yes, it's byte 
+                BEQ     SIZEW           *If yes, it's word 
                 
                 CMP.W   #$40, D1       *If SIZE 1
-                BEQ     SIZEL           *If yes, it's byte
+                BEQ     SIZEL           *If yes, it's long
                 
                 RTS
                 
 OPRTS           LEA RTSMESSAGE,A1
                 MOVE.B  #$23, D4
+                MOVE.B  #$0, D7
                 RTS
                 
 OPCLR           LEA CLRMESSAGE,A1
                 MOVE.B  #$12, D4
+                
+                MOVE.W  D0, D1
+                AND.W   #$C0, D1       *Isolate SIZE part
+                
+                CMP.W   #$0, D1         *If SIZE 0
+                BEQ     SIZEB           *If yes, it's byte 
+                
+                CMP.W   #$40, D1       *If SIZE 1
+                BEQ     SIZEW           *If yes, it's word
+                
+                CMP.W   #$80, D1       *If SIZE 1
+                BEQ     SIZEL           *If yes, it's byte
+                
                 RTS
 *----------------------------------------CHECK0100-------------------------------------------------------
 
@@ -4144,7 +4177,9 @@ ANMINUSOPENMESSAGE DC.B '-(A', 0
 *~Font name~Courier New~
 *~Font size~10~
 *~Tab type~1~
-*~Tab size~4~
+*~Tab size~20~
+
+
 
 
 
