@@ -818,12 +818,18 @@ PERIODINPUT     CMP.L       D2, D3
                 
                 MOVEA.L     D2, A0              *Move the starting address to A0
                 MOVEA.L     D3, A4              *Move the ending address to A4
+<<<<<<< HEAD
                 MOVEA.L     D6, A5
+=======
+>>>>>>> master
                 BRA         EMPTYLINE
                 
 SWITCHINPUT     MOVEA.L     D2, A4              *Move the starting address to A0
                 MOVEA.L     D3, A0              *Move the ending address to A4
+<<<<<<< HEAD
                 MOVEA.L     D5, A5
+=======
+>>>>>>> master
                 BRA         EMPTYLINE
                 
 BACKSPACEINPUT  CMP.B       #$0, D4             *Check if starting address or not
@@ -833,7 +839,11 @@ BACKSPACEINPUT  CMP.B       #$0, D4             *Check if starting address or no
                 
 BACKSTART       ASR.L       #$4, D2             *Shift to right
                 SUB.L       #$1, D5             *Subtract size
+<<<<<<< HEAD
                 *SUBA.L       #$1, A5
+=======
+                SUBA.L       #$1, A5
+>>>>>>> master
                 
                 BRA         INPUTLOOP
                 
@@ -856,14 +866,21 @@ DOREST          CMP.B       #$0, D4             *Check if it's starting or endin
 STARTINGADDRESS ASL.L       #$4, D2             *Shift to left
                 ADD.L       D1, D2              *Add the number to D2
                 ADD.L       #$1, D5             *Add count in D5
+<<<<<<< HEAD
                 *ADDA.L      #$1, A5             *Add to A5 as well
+=======
+                ADDA.L      #$1, A5             *Add to A5 as well
+>>>>>>> master
         
                 BRA         INPUTLOOP           *Go back to the input loop
                 
 ENDINGADDRESS   ASL.L       #$4, D3             *Shift to left
                 ADD.L       D1, D3              *Add the number to D3
                 ADD.L       #$1, D6             *Add count in D6
+<<<<<<< HEAD
                 ADDA.L      #$1, A5
+=======
+>>>>>>> master
         
                 BRA         INPUTLOOP           *Go back to the input loop
             
