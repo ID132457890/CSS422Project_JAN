@@ -9,9 +9,19 @@ START:                  ; first instruction of program
 
 *----------------------------------main--------------------------
     *Ask for input
+    JSR         CLEARALL
+    MOVEA.L     #$0, A1
+    MOVEA.L     #$0, A2
+    MOVEA.L     #$0, A3
+    MOVEA.L     #$0, A4
+    MOVEA.L     #$0, A5
+    MOVEA.L     #$0, A6
+    MOVEA.L     #$0, A7
     JSR         INPUT
     
 LOOP    
+
+    ADDA.L      #$1, A3 *Counter
     *Print the initial address
     JSR         PRINTADDRESS
     
@@ -21,8 +31,12 @@ LOOP
     *Copy the opcode to D1 for changes
     MOVE.W      (A0), D1
     
+    MOVEA.W      A0, A6    *Keep original address in case there is an error
+    
     *Increase the address by 2, since that part has been read
     ADDA.W       #$2, A0
+    
+    MOVE.B      #-1, D4     *Start at invalid
     
     JSR         CHECK1100    *Check for AND or MULS
     JSR         CHECK0000   *Check for ANDI, ADDI, BCHG, CMPI or MOVE  initial
@@ -37,31 +51,96 @@ LOOP
    
     MOVE.L      D0, D2          *Backup opcode
    
-    MOVE.B  #14, D0
+    CMP.B       #-1, D4
+    BEQ         INVALIDOPCODE
+    
+    MOVE.L      D2, D0      *restore opcode
+    CLR         D2
+    
+    JSR         CHECKEAS    *Checks the EAs
+    
+    *Would go below only if there are no errors
+    MOVE.B  #14, D0         *Print opcode
     TRAP    #15
     
     JSR         PRINTSIZES  *Print the sizes
     
-    MOVE.L      D2, D0      *restore opcode
+    CMP.B   #-1, D5
+    BNE     SOURCE
+    BRA     CONTINUE
     
-    JSR         CHECKEAS    *Checks the EAs
+SOURCE    JSR         PRINTSOURCE *Print source EA
+
+    CMP.B   #-1, D6
+    BEQ     DESTINATION
     
-    *JSR         PRINTSOURCE *Print source EA
+    JSR     PRINTCOMMA
+    
+DESTINATION     CMP.B   #-1, D6
+    BNE     DEST
+    BRA     CONTINUE
+DEST    JSR         PRINTDESTINATION    *Print destination
+CONTINUE    JSR         EMPTYLINE   
     
     CMP.L       A4, A0      *Check if the starting address is same as ending
     BGE         OUTPUTEND   *If yes, then stop
     
     JSR         CLEARALL
     
-    *Start next iteration of loop on new line
-    LEA NEWLINE, A1
-    TRAP #15
-
+    CMP.L       #$18, A3
+    BEQ         ASKFORCONTINUE
+    
     BRA         LOOP        *If not, then loop back            
     
     SIMHALT   
 *------------------------------------main----------------------------------------
     
+ASKFORCONTINUE  LEA         CONTINUEMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      #5, D0  *Read y/n
+ASKLOOP         TRAP        #15
+                
+                CMP.B       #$D, D1    *n
+                BEQ         YESCONTINUE
+                BRA ASKLOOP
+             
+                
+YESCONTINUE     JSR         EMPTYLINE
+                MOVEA.L     #$0, A3
+                BRA         LOOP
+                
+
+
+INVALIDOPCODE   LEA         INVALIDMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                LEA         SPACEMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                LEA         DOLLARMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      #$4, D6             *Put actual size in D6
+                MOVE.W      (A6), D3            *Move opcode in D3
+INVALIDLOOP     ROL.W       #$4, D3             *Shift left to right position
+                MOVE.W      D3, D0              *Move to D0 for backup
+                AND.W       #$F, D3             *Isolate first byte
+                MOVE.B      D3, D1              *Move byte to D1
+                MOVE.W      D0, D3              *Move original back to D2
+                AND.W       #$FFF0, D3          *Remove first 4 bits
+                SUB.B       #$1, D6
+                
+                JSR         COMPAREADDRESS
+                
+                CMP.B       #$0, D6
+                BNE         INVALIDLOOP
+                
+                BRA         CONTINUE
 
 CLEARALL        CLR         D0
                 CLR         D1
@@ -71,6 +150,16 @@ CLEARALL        CLR         D0
                 CLR         D5
                 CLR         D6
                 CLR         D7
+                
+                *MOVEA.L     #$0, A1
+                *MOVEA.L     #$0, A2
+                *MOVEA.L     #$0, A6
+                RTS
+                
+PRINTCOMMA      LEA         COMMAMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
                 RTS
                 
 *-----------------------------------PRINTSIZES-----------------------------------
@@ -86,35 +175,264 @@ PRINTSIZES      CMP.B       #$1, D7         *Check if byte
                 CMP.B       #$3, D7         *Check if long
                 BEQ         PRINTLONG
                 
+                JSR         PRINTSPACE
+                
                 RTS
                 
 PRINTBYTE       LEA         BYTEMESSAGE, A1
-                MOVE.B      #13, D0
+                MOVE.B      #14, D0
                 TRAP        #15
                 
+                JSR         PRINTSPACE
                 RTS
-                *JSR         PRINTSPACE
-                *JSR         EMPTYLINE
                 
 PRINTWORD       LEA         WORDMESSAGE, A1
-                MOVE.B      #13, D0
+                MOVE.B      #14, D0
                 TRAP        #15
                 
+                JSR         PRINTSPACE
                 RTS
-                *JSR         PRINTSPACE
-                *JSR         EMPTYLINE
                 
 PRINTLONG       LEA         LONGMESSAGE, A1
-                MOVE.B      #13, D0
+                MOVE.B      #14, D0
                 TRAP        #15
                 
+                JSR         PRINTSPACE
                 RTS
-                *JSR         PRINTSPACE
-                *JSR         EMPTYLINE
                 
 *-----------------------------------PRINTEAS-------------------------------------
 *Description: This branch prints the EAs
 *--------------------------------------------------------------------------------
+
+PRINTDESTINATION     ADD.B       #$1, D6             *Add 1 to size
+
+                CMP.B       #$1, D6             *Check if Dn
+                BEQ         DNEAD                *It's DN
+                
+                CMP.B       #$2, D6             *Check if An
+                BEQ         ANEAD
+                
+                CMP.B       #$4, D6             *Check if (An)
+                BEQ         ANIEAD
+                
+                CMP.B       #$5, D6             *Check if (An)+
+                BEQ         ANPLUSEAD       
+                
+                CMP.B       #$6, D6             *Check if -(An)
+                BEQ         ANMINUSEAD      
+                
+                CMP.B       #$7, D6             *Check if xxx.w
+                BEQ         XXXWEAD          
+                
+                CMP.B       #$8, D6             *Check if xxx.l
+                BEQ         XXXLEAD
+                
+                CMP.B       #$9, D6             *Check if data
+                BEQ         DATAEAD
+                
+                CMP.B       #$11, D6            *Check if list
+                BEQ         ADLISTEAD
+                
+ADLISTEAD       CLR         D3
+                CLR         D1
+                CLR         D6
+ADLISTEALOOPD   MOVE.B      (A2, D3), D1      *retrive element
+                CMP.B       #$0, D6
+                BNE         ADLISTSLASHD
+                
+ADLISTEALOOP2D  CMP.B       #7, D3              *Check if index less than 7
+                BLE         DLISTD
+                
+                BRA         ALISTD
+                
+DLISTD          CMP.B       #$1, D1         *Check if element 1
+                BNE         CHECKADLISTD
+                
+                LEA         DNMESSAGE, A1       *Show D
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      D1, D6              *Conserve num
+                MOVE.B      D3, D1              *Move counter to D1
+                MOVE.B      #3, D0              *Show n
+                TRAP        #15
+                
+                BRA         CHECKADLISTD
+                
+ALISTD          CMP.B       #$1, D1         *Check if element 1
+                BNE         CHECKADLISTD
+                
+                LEA         ANMESSAGE, A1       *Show A
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      D1, D6              *Conserve num
+                MOVE.B      D3, D1              *Move counter to D1
+                SUB.B       #8, D1              *Subtract 8
+                MOVE.B      #3, D0              *Show n
+                TRAP        #15
+                
+                BRA         CHECKADLISTD
+                
+CHECKADLISTD    ADD.B       #1, D3              *add counter
+                CMP.B       #16, D3
+                BNE         ADLISTEALOOPD
+                
+                RTS        
+                
+ADLISTSLASHD    CMP.B       #$0, D1
+                BEQ         ADLISTEALOOP2D
+                
+                LEA         SLASHMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                BRA         ADLISTEALOOP2D
+                
+DNEAD           LEA         DNMESSAGE, A1       *Show D
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      D3, D1              *Show n
+                MOVE.B      #3, D0
+                TRAP        #15
+                
+                RTS
+                
+ANEAD           LEA         ANMESSAGE, A1       *Show A
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      D3, D1              *Show n
+                MOVE.B      #3, D0
+                TRAP        #15
+                
+                RTS
+                
+ANIEAD          LEA         ANIOPENMESSAGE, A1  *Show (A
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      D3, D1              *Show n
+                MOVE.B      #3, D0
+                TRAP        #15
+                
+                LEA         ANICLOSEMESSAGE, A1 *Show )  
+                MOVE.B      #14, D0
+                TRAP        #15   
+                
+                RTS
+                
+ANPLUSEAD       LEA         ANIOPENMESSAGE, A1  *Show (A
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      D3, D1              *Show n
+                MOVE.B      #3, D0
+                TRAP        #15
+                
+                LEA         ANPLUSCLOSEMESSAGE, A1 *Show )+  
+                MOVE.B      #14, D0
+                TRAP        #15  
+                
+                RTS
+                
+ANMINUSEAD      LEA         ANMINUSOPENMESSAGE, A1  *Show -(A
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      D3, D1              *Show n
+                MOVE.B      #3, D0
+                TRAP        #15
+                
+                LEA         ANICLOSEMESSAGE, A1 *Show )  
+                MOVE.B      #14, D0
+                TRAP        #15 
+                
+                RTS
+                
+XXXWEAD         LEA         DOLLARMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+
+                MOVE.B      #$4, D6             *Put actual size in D5
+XXXWEALOOPD     ROL.W       #$4, D3             *Shift left to right position
+                MOVE.W      D3, D0              *Move to D0 for backup
+                AND.W       #$F, D3             *Isolate first byte
+                MOVE.B      D3, D1              *Move byte to D1
+                MOVE.W      D0, D3              *Move original back to D2
+                AND.W       #$FFF0, D3          *Remove first 4 bits
+                SUB.B       #$1, D6
+                
+                JSR         COMPAREADDRESS
+                
+                CMP.B       #$0, D6
+                BNE         XXXWEALOOPD
+                
+                RTS
+                
+XXXLEAD         LEA         DOLLARMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+
+                MOVE.B      #$8, D6             *Put actual size in D5
+XXXLEALOOPD     ROL.L       #$4, D3             *Shift left to right position
+                MOVE.L      D3, D0              *Move to D0 for backup
+                AND.L       #$F, D3             *Isolate first byte
+                MOVE.B      D3, D1              *Move byte to D1
+                MOVE.L      D0, D3              *Move original back to D2
+                AND.L       #$FFFFFFF0, D3      *Remove first 4 bits
+                SUB.B       #$1, D6
+                
+                JSR         COMPAREADDRESS
+                
+                CMP.B       #$0, D6
+                BNE         XXXLEALOOPD
+                
+                RTS
+     
+DATAEAD         LEA         POUNDMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                LEA         DOLLARMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+
+                CMP.L       #$1, D7
+                BEQ         ADDBYTE
+                
+                CMP.L       #$2, D7
+                BEQ         ADDWORD
+                
+                CMP.L       #$3, D7
+                BEQ         ADDLONG
+                
+ADDBYTE         MOVE.L      #$2, D7
+                BRA         DATAEALOOPD
+                
+ADDWORD         MOVE.L      #$4, D7
+                BRA         DATAEALOOPD
+              
+ADDLONG         MOVE.L      #$8, D7
+                BRA         DATAEALOOPD
+
+DATAEALOOPD     ROL.L       #$4, D3             *Shift left to right position
+                MOVE.L      D3, D0              *Move to D0 for backup
+                AND.L       #$F, D3             *Isolate first byte
+                CLR         D1
+                MOVE.B      D3, D1              *Move byte to D1
+                MOVE.L      D0, D3              *Move original back to D2
+                AND.L       #$FFFFFFF0, D3      *Remove first 4 bits
+                SUB.B       #$1, D7
+                
+                JSR         COMPAREADDRESS
+                
+                CMP.B       #$0, D7
+                BNE         DATAEALOOPD
+                
+                RTS
+                
 
 PRINTSOURCE     ADD.B       #$1, D5             *Add 1 to size
 
@@ -142,6 +460,132 @@ PRINTSOURCE     ADD.B       #$1, D5             *Add 1 to size
                 CMP.B       #$9, D5             *Check if data
                 BEQ         DATAEA
                 
+                CMP.B       #$11, D5            *Check if list
+                BEQ         ADLISTEA
+                
+                CMP.B       #$12, D5            *Check if list
+                BEQ         DALISTEA
+                
+ADLISTEA        CLR         D2
+                CLR         D1
+                CLR         D5
+ADLISTEALOOP    MOVE.B      (A2, D2), D1      *retrive element
+                CMP.B       #$0, D5
+                BNE         ADLISTSLASH
+                
+ADLISTEALOOP2   CMP.B       #7, D2              *Check if index less than 7
+                BLE         DLIST
+                
+                BRA         ALIST
+                
+DLIST           CMP.B       #$1, D1         *Check if element 1
+                BNE         CHECKADLIST
+                
+                LEA         DNMESSAGE, A1       *Show D
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      D1, D5              *Conserve num
+                MOVE.B      D2, D1              *Move counter to D1
+                MOVE.B      #3, D0              *Show n
+                TRAP        #15
+                
+                BRA         CHECKADLIST
+                
+ALIST           CMP.B       #$1, D1         *Check if element 1
+                BNE         CHECKADLIST
+                
+                LEA         ANMESSAGE, A1       *Show A
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      D1, D5              *Conserve num
+                MOVE.B      D2, D1              *Move counter to D1
+                SUB.B       #8, D1              *Subtract 8
+                MOVE.B      #3, D0              *Show n
+                TRAP        #15
+                
+                BRA         CHECKADLIST
+                
+CHECKADLIST     ADD.B       #1, D2              *add counter
+                CMP.B       #16, D2
+                BNE         ADLISTEALOOP
+                
+                RTS        
+                
+ADLISTSLASH     CMP.B       #$0, D1
+                BEQ         ADLISTEALOOP2
+                
+                LEA         SLASHMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                BRA         ADLISTEALOOP2
+               
+                
+DALISTEA        CLR         D2
+                CLR         D1
+                CLR         D5
+DALISTEALOOP    MOVE.B      (A2, D2), D1      *retrive element
+                CMP.B       #$0, D5
+                BNE         DALISTSLASH
+                
+DALISTEALOOP2   CMP.B       #7, D2              *Check if index less than 7
+                BLE         ALIST2
+                
+                BRA         DLIST2
+                
+DLIST2          CMP.B       #$1, D1         *Check if element 1
+                BNE         CHECKDALIST
+                
+                LEA         DNMESSAGE, A1       *Show D
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      D1, D5              *Conserve num
+                MOVE.B      D2, D1              *Move counter to D1
+                SUB.B       #8, D1              *Subtract 8
+                MOVE.B      D1, D0              *Move counter to d0
+                MOVE.B      #7, D1              *Move 7 to d1
+                SUB.B       D0, D1              *Do 7 - counter
+                MOVE.B      #3, D0              *Show n
+                TRAP        #15
+                
+                BRA         CHECKDALIST
+                
+ALIST2          CMP.B       #$1, D1         *Check if element 1
+                BNE         CHECKDALIST
+                
+                LEA         ANMESSAGE, A1       *Show A
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                MOVE.B      D1, D5              *Conserve num
+                MOVE.B      D2, D1              *Move counter to D1
+                MOVE.B      D1, D0              *Move counter to d0
+                MOVE.B      #7, D1              *Move 7 to d1
+                SUB.B       D0, D1              *Do 7 - counter
+                MOVE.B      #3, D0              *Show n
+                TRAP        #15
+                
+                BRA         CHECKDALIST
+                
+CHECKDALIST     ADD.B       #1, D2              *add counter
+                CMP.B       #16, D2
+                BNE         DALISTEALOOP
+                
+                RTS        
+                
+DALISTSLASH     CMP.B       #$0, D1
+                BEQ         DALISTEALOOP2
+                
+                LEA         SLASHMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                BRA         DALISTEALOOP2
+
+                                
 DNEA            LEA         DNMESSAGE, A1       *Show D
                 MOVE.B      #14, D0
                 TRAP        #15
@@ -204,7 +648,11 @@ ANMINUSEA       LEA         ANMINUSOPENMESSAGE, A1  *Show -(A
                 
                 RTS
                 
-XXXWEA          MOVE.B      #$4, D5             *Put actual size in D5
+XXXWEA          LEA         DOLLARMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+
+                MOVE.B      #$4, D5             *Put actual size in D5
 XXXWEALOOP      ROL.W       #$4, D2             *Shift left to right position
                 MOVE.W      D2, D0              *Move to D0 for backup
                 AND.W       #$F, D2             *Isolate first byte
@@ -220,7 +668,11 @@ XXXWEALOOP      ROL.W       #$4, D2             *Shift left to right position
                 
                 RTS
                 
-XXXLEA          MOVE.B      #$8, D5             *Put actual size in D5
+XXXLEA          LEA         DOLLARMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+
+                MOVE.B      #$8, D5             *Put actual size in D5
 XXXLEALOOP      ROL.L       #$4, D2             *Shift left to right position
                 MOVE.L      D2, D0              *Move to D0 for backup
                 AND.L       #$F, D2             *Isolate first byte
@@ -236,9 +688,56 @@ XXXLEALOOP      ROL.L       #$4, D2             *Shift left to right position
                 
                 RTS
                 
-DATAEA          ROL.L       #$4, D2             *Shift left to right position
-                MOVE.L      D2, D0              *Move to D0 for backup
+DATAEA          LEA         POUNDMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+                
+                LEA         DOLLARMESSAGE, A1
+                MOVE.B      #14, D0
+                TRAP        #15
+
+                CMP.L       #$1, D7
+                BEQ         ADDBYTES
+                
+                CMP.L       #$2, D7
+                BEQ         ADDWORDS
+                
+                CMP.L       #$3, D7
+                BEQ         ADDLONGS
+                
+ADDBYTES        MOVE.L      #$2, D7
+                MOVE.L      #$1, D5
+                BRA         DATAEALOOP
+                
+ADDWORDS        MOVE.L      #$4, D7
+                MOVE.L      #$2, D5
+                BRA         DATAEALOOP
+              
+ADDLONGS        MOVE.L      #$8, D7
+                MOVE.L      #$3, D5
+                BRA         DATAEALOOP
+                
+DATAEALOOP      CMP.W       #$1, D5
+                BEQ         BYTEDATA
+                
+                CMP.W       #$2, D5
+                BEQ         WORDDATA
+                
+                CMP.W       #$3, D5
+                BEQ         LONGDATA
+                
+BYTEDATA        ROL.B       #$4, D2             *Shift left to right position
+                BRA         DATAEALOOP2
+                
+WORDDATA        ROL.W       #$4, D2             *Shift left to right position
+                BRA         DATAEALOOP2
+                
+LONGDATA        ROL.L       #$4, D2             *Shift left to right position
+                BRA         DATAEALOOP2
+               
+DATAEALOOP2     MOVE.L      D2, D0              *Move to D0 for backup
                 AND.L       #$F, D2             *Isolate first byte
+                CLR         D1
                 MOVE.B      D2, D1              *Move byte to D1
                 MOVE.L      D0, D2              *Move original back to D2
                 AND.L       #$FFFFFFF0, D2      *Remove first 4 bits
@@ -247,7 +746,7 @@ DATAEA          ROL.L       #$4, D2             *Shift left to right position
                 JSR         COMPAREADDRESS
                 
                 CMP.B       #$0, D7
-                BNE         DATAEA
+                BNE         DATAEALOOP
                 
                 RTS
 
@@ -257,10 +756,10 @@ DATAEA          ROL.L       #$4, D2             *Shift left to right position
 
 INPUT           LEA         INPUTMESSAGE, A1    *Show the first line
                 MOVE.B      #13, D0
-                TRAP        #15     
-                
-                LEA         INPUTMESSAGE2, A1
-                TRAP        #15 
+                TRAP        #15    
+                LEA         INPUTMESSAGE1, A1
+                MOVE.B      #13, D0
+                TRAP        #15  
 
 INPUTLOOP       MOVE.B      #5, D0              *Wait for user input (character)
                 TRAP        #15
@@ -270,6 +769,22 @@ CHECKIFCOMMA    CMP.B       #$2C, D1            *If not, check if it's a comma
                 
 CHECKIFPERIOD   CMP.B       #$2E, D1            *If not, check if it's a period
                 BEQ         PERIODINPUT         *If yes, it's a period
+                
+CHECKBACKSPACE  CMP.B       #$8, D1             *If not, check if backspace
+                BEQ         BACKSPACEINPUT
+                
+CHECKLCA        CMP.B       #$61, D1
+                BGE         CHECKLCZ
+                
+                BRA         CHECKMOREA
+                
+CHECKLCZ        CMP.B       #$7A, D1
+                BLE         DECREASELC
+                
+                BRA         CHECKMOREA
+                
+DECREASELC      SUB.W       #$20, D1
+                BRA         CHECKMOREA
         
 CHECKMOREA      CMP.B       #$41, D1            *Check if letter better than A
                 BGE         CHECKLESSF          *If yes, check if less than F
@@ -281,6 +796,8 @@ CHECKLESSF      CMP.B       #$46, D1            *Check if less than F
         
 CHECKMORE0      CMP.B       #$30, D1            *If not, then check if number better than 0
                 BGE         CHECKIFLESS9        *If yes, check if less than 9
+                
+                BRA         INPUTLOOP
                 
 CHECKIFLESS9    CMP.B       #$39, D1            *Check if less than 9
                 BLE         NUMBERINPUT         *If yes, then it's a number input
@@ -296,9 +813,40 @@ NUMBERINPUT     SUB.B       #$30, D1            *Subtract 30 from D1 (since it's
 COMMAINPUT      ADD.B       #$1, D4             *Add 1 to D4 to show that the ending address
                 BRA         INPUTLOOP 
                 
-PERIODINPUT     MOVEA.L     D2, A0              *Move the starting address to A0
+PERIODINPUT     CMP.L       D2, D3
+                BLT         SWITCHINPUT
+                
+                MOVEA.L     D2, A0              *Move the starting address to A0
                 MOVEA.L     D3, A4              *Move the ending address to A4
+                MOVEA.L     D6, A5
                 BRA         EMPTYLINE
+                
+SWITCHINPUT     MOVEA.L     D2, A4              *Move the starting address to A0
+                MOVEA.L     D3, A0              *Move the ending address to A4
+                MOVEA.L     D5, A5
+                BRA         EMPTYLINE
+                
+BACKSPACEINPUT  CMP.B       #$0, D4             *Check if starting address or not
+                BEQ         BACKSTART
+                
+                BEQ         BACKEND
+                
+BACKSTART       ASR.L       #$4, D2             *Shift to right
+                SUB.L       #$1, D5             *Subtract size
+                *SUBA.L       #$1, A5
+                
+                BRA         INPUTLOOP
+                
+BACKEND         CMP.B       #$0, D6
+                BEQ         BACKCOMMA
+                
+                ASR.L       #$4, D3             *Shift to right
+                SUB.L       #$1, D6             *Subtract size
+                
+                BRA         INPUTLOOP
+                
+BACKCOMMA       MOVE.L      #$0, D4
+                BRA         INPUTLOOP
         
 DOREST          CMP.B       #$0, D4             *Check if it's starting or ending
                 BEQ         STARTINGADDRESS     *If yes, it's part of starting address
@@ -308,13 +856,14 @@ DOREST          CMP.B       #$0, D4             *Check if it's starting or endin
 STARTINGADDRESS ASL.L       #$4, D2             *Shift to left
                 ADD.L       D1, D2              *Add the number to D2
                 ADD.L       #$1, D5             *Add count in D5
-                ADDA.L      #$1, A5             *Add to A5 as well
+                *ADDA.L      #$1, A5             *Add to A5 as well
         
                 BRA         INPUTLOOP           *Go back to the input loop
                 
 ENDINGADDRESS   ASL.L       #$4, D3             *Shift to left
                 ADD.L       D1, D3              *Add the number to D3
                 ADD.L       #$1, D6             *Add count in D6
+                ADDA.L      #$1, A5
         
                 BRA         INPUTLOOP           *Go back to the input loop
             
@@ -329,25 +878,60 @@ EMPTYLINE       LEA         EMPTYLINEMESSAGE, A1  *Empty line
 *Description: Handles what happens when the dissassembler is done
 *----------------------------------------------------------------------------------------------------
 
-OUTPUTEND       SIMHALT
+OUTPUTEND       LEA         ENDMESSAGE, A1
+                MOVE.B      #13, D0
+                TRAP        #15
 
-*----------------------------------------------------------------------------------------------------
-*                                           Subroutine: PRINTADDRESS
+                
+   
+        
+
+ENDLOOP    
+                MOVE.B #5, D0
+                TRAP #15
+                CMP.B #$6E,D1
+                
+                BEQ DONE
+                
+                CMP.B #$79,D1                
+                BEQ TESTNEWRANGE                
+                BRA ENDLOOP
+TESTNEWRANGE    
+                *start next line on a new line
+                MOVE.B #14,D0   
+                LEA NEWLINE,A1
+                TRAP #15          
+                
+                *zero out memory 
+                JSR CLEARALL      
+                
+                *start program over          
+                BRA START
+
+DONE SIMHALT   
+
+
+*----------------------------------------------------------------------------------------------------*                                           
+*Subroutine: PRINTADDRESS
 *Description: Prints the current address the disassembler is on
 *----------------------------------------------------------------------------------------------------
 
 PRINTADDRESS    MOVE.L      A0, D2              *Move current address to D2
                 MOVE.L      A5, D5              *Move address size
-                ADD.B       #$1, D5             *Add 1 to size
-                CMP.L       #$5, D5             *Check if the length is >4
+                *ADD.L       #$1, D5             *Add 1 to size
+                CMP.L       #$4, D5             *Check if the length is >4
                 BGT         PRINTLONGADDRESS    *If yes, it's a long address
 
-                CMP.L       #$3, D5             *Check if the length is >2
+                CMP.L       #$2, D5             *Check if the length is >2
                 BGT         PRINTWORDADDRESS    *If yes, it's a word address
                 
                 BRA         PRINTBYTEADDRESS    *If not, it's a byte address
                 
-PRINTLONGADDRESS    ROL.L   #$4, D2             *Shift by 4 bits
+PRINTLONGADDRESS    MOVE.L  #$8, D7
+                    SUB.L   D5, D7
+                    MULS.W  #$4, D7
+                    ROL.L   D7, D2
+PLAL                ROL.L   #$4, D2             *Shift by 4 bits
                     MOVE.L  D2, D7              *Move to D7 for backup
                     AND.L   #$F, D2             *Isolate first byte
                     MOVE.B  D2, D1              *Move byte to D1
@@ -358,11 +942,15 @@ PRINTLONGADDRESS    ROL.L   #$4, D2             *Shift by 4 bits
                     JSR     COMPAREADDRESS        *Print the address
                     
                     CMP.L   #$0, D5             *Check if the address length is 0
-                    BNE     PRINTLONGADDRESS    *If not, then loop again
+                    BNE     PLAL                *If not, then loop again
                     
                     BRA     PRINTSPACE          *If yes, then stop and print empty line
                     
-PRINTWORDADDRESS    ROL.W   #$4, D2             *Shift by 4 bits
+PRINTWORDADDRESS    MOVE.L  #$4, D7
+                    SUB.W   D5, D7
+                    MULS.W  #$4, D7
+                    ROL.W   D7, D2
+PWAL                ROL.W   #$4, D2             *Shift by 4 bits
                     MOVE.L  D2, D7              *Move to D7 for backup
                     AND.L   #$F, D2             *Isolate first byte
                     MOVE.B  D2, D1              *Move byte to D1
@@ -373,11 +961,15 @@ PRINTWORDADDRESS    ROL.W   #$4, D2             *Shift by 4 bits
                     JSR     COMPAREADDRESS        *Print the address
                     
                     CMP.W   #$0, D5             *Check if the address length is 0
-                    BNE     PRINTWORDADDRESS    *If not, then loop again
+                    BNE     PWAL                *If not, then loop again
                     
                     BRA     PRINTSPACE          *If yes, then stop and print empty line
                     
-PRINTBYTEADDRESS    ROL.L   #$4, D2             *Shift by 4 bits
+PRINTBYTEADDRESS    MOVE.L  #$2, D7
+                    SUB.W   D5, D7
+                    MULS.W  #$4, D7
+                    ROL.B   D7, D2
+PBAL                ROL.B   #$4, D2             *Shift by 4 bits
                     MOVE.L  D2, D7              *Move to D7 for backup
                     AND.L   #$F, D2             *Isolate first byte
                     MOVE.B  D2, D1              *Move byte to D1
@@ -388,7 +980,7 @@ PRINTBYTEADDRESS    ROL.L   #$4, D2             *Shift by 4 bits
                     JSR     COMPAREADDRESS        *Print the address
                     
                     CMP.B   #$0, D5             *Check if the address length is 0
-                    BNE     PRINTBYTEADDRESS    *If not, then loop again
+                    BNE     PBAL                *If not, then loop again
                     
                     BRA     PRINTSPACE          *If yes, then stop and print empty line
                     
@@ -691,7 +1283,8 @@ OPANDI          LEA     ANDIMESSAGE, A1 *Store the ANDI message
 *                                            Subroutine: CHECK1110
 *Description: Checks if opcode word starts with the binary 1110. If true it identifies if it is LSR/LSL,ASR/ASL,ROR/ROL
 *----------------------------------------------------------------------------------------------------
-CHECK1110       AND.W   #$F000, D1      *Isolates the first 4 spaces
+CHECK1110       MOVE.W  D0, D1
+                AND.W   #$F000, D1      *Isolates the first 4 spaces
                 CMP.W   #$E000, D1      *Checks if the first 4 spaces are 1110
                 
                 BEQ     CHECKLAR        *If true, then it's LSR, ASR or ROR (and left versions)
@@ -976,12 +1569,45 @@ CHECK0110       *Check for BCC opcode
                 MOVE.W D0,D1 *restore the opcode to d1
                 AND.W #$F000,D1
                 CMP.W #$6000,D1
-                BEQ OPBCC
+                BEQ OPBXX
                 RTS
                 
-OPBCC           LEA BCCMESSAGE, A1
-                MOVE.B  #$21, D4
+OPBXX          * check bit 11,10,9,8 for what bcc codition code                 
+             
+                
+                                 
+                *check if 11,10,9,8 is 1111
+                MOVE.W D0,D1 *restore the opcode to d1
+                AND.W #$F00,D1 *isolate bit 11-8
+                CMP.W #$F00,D1                
+                BEQ OPBLE 1111
+
+            
+                MOVE.W D0,D1
+                AND.W #$E00,D1
+                CMP.W #$E00,D1
+                BEQ OPBGT
+                
+            
+                MOVE.W D0,D1
+                AND.W #$400,D1
+                CMP.W #$400,D1
+                BEQ OPBCC
+                
                 RTS
+                
+OPBCC    LEA BCCMESSAGE, A1   
+         MOVE.B  #$21, D4
+         RTS
+         
+OPBGT    LEA BGTMESSAGE, A1 
+         MOVE.B  #$21, D4  
+         RTS
+
+OPBLE    LEA BLEMESSAGE, A1   
+         MOVE.B  #$21, D4
+         RTS
+                
 *------------------------------------------CHECK0110-------------------------------------------------------
 
 
@@ -1148,65 +1774,81 @@ CHECKOPS        *******Check for NOP and RTS since they are constant
                  CMP #$4E71,D1
                  BEQ OPNOP
 
-              
+                
                 
                 *******Check for lea*******                
                 AND.W #$100,D1  *mask every bit but the 8th
                 CMP.W #$100, D1 *check if bit 8 is 1 
                 BEQ OPLEA
+                
+                MOVE.W  D0, D1
+                AND.W   #$800, D1   *Isolate 11 bit
+                CMP.W   #$0, D1
+                BEQ     OPCLR
+                
+                MOVE.W  D0, D1
+                AND.W   #$200, D1   *Isolate 9 bit
+                CMP.W   #$0, D1
+                BEQ     OPMOVEM
+                
+                MOVE.W  D0, D1
+                AND.W   #$38, D1   *Isolate 5, 4 and 3 bits
+                CMP.W   #$110, D1
+                BNE     OPJSR
               
-                ******check for JSR
-                MOVE.W D0,D1 *restore opcode
-                AND.W #$280,D1 *check if th 9 is 1 and 7 is 1
-                CMP.W #$280,D1
-                BEQ OPJSR *check the remaing op codes
-                
-                ******Check for MOVEM*******
-                MOVE.W D0,D1 *RESTORE OPCODE
-                AND.W #$200,D1 *maks every bit but the 8th
-                CMP.W #$200,D1 * CHECK IF THE BIT 8 IS 1
-                BEQ OPMOVEM
-                
-                  ******check for CLR********
-                MOVE.W D0,D1 *RESTORE OPCODE         
-                AND.W #$FF00,D1  *mask every bit but the 8th
-                CMP.W #$4200, D1 *check if bit 8 and 11 is 1
-                BEQ   OPCLR
-                RTS
+                BRA     INVALIDOPCODE
                 
  
 OPNOP           LEA NOPMESSAGE,A1
                 MOVE.B  #$0, D4
+                MOVE.B  #$0, D7
                 RTS    
 OPJSR
                 LEA JSRMESSAGE,A1
                 MOVE.B  #$22, D4
+                MOVE.B  #$0, D7
                 RTS
 OPLEA  
                 LEA LEAMESSAGE,A1
                 MOVE.B  #$11, D4
                 
-                BRA     SIZEL           *It's always long
+                MOVE.B  #$0, D7
+                RTS
+                *BRA     SIZEL           *It's always long
                 
 OPMOVEM         LEA OPMOVEMMESSAGE,A1
                 MOVE.B  #$3, D4
-*                
+                
                 MOVE.W  D0, D1
                 AND.W   #$40, D1       *Isolate SIZE part
                 CMP.W   #$0, D1         *If SIZE 0
-                BEQ     SIZEW           *If yes, it's byte 
+                BEQ     SIZEW           *If yes, it's word 
                 
                 CMP.W   #$40, D1       *If SIZE 1
-                BEQ     SIZEL           *If yes, it's byte
+                BEQ     SIZEL           *If yes, it's long
                 
                 RTS
                 
 OPRTS           LEA RTSMESSAGE,A1
                 MOVE.B  #$23, D4
+                MOVE.B  #$0, D7
                 RTS
                 
 OPCLR           LEA CLRMESSAGE,A1
                 MOVE.B  #$12, D4
+                
+                MOVE.W  D0, D1
+                AND.W   #$C0, D1       *Isolate SIZE part
+                
+                CMP.W   #$0, D1         *If SIZE 0
+                BEQ     SIZEB           *If yes, it's byte 
+                
+                CMP.W   #$40, D1       *If SIZE 1
+                BEQ     SIZEW           *If yes, it's word
+                
+                CMP.W   #$80, D1       *If SIZE 1
+                BEQ     SIZEL           *If yes, it's byte
+                
                 RTS
 *----------------------------------------CHECK0100-------------------------------------------------------
 
@@ -1234,14 +1876,17 @@ SIZEL           MOVE.B  #$3, D7
 
 
 *-------------------------------------EA Code begins-----------------------------------------------------
-CHECKEAS        CMP.B   #$1, D4
+CHECKEAS        CMP.B   #$0, D4
+                BEQ     NOPEA
+
+                CMP.B   #$1, D4
                 BEQ     MOVEEA
                 
                 CMP.B   #$2, D4
                 BEQ     MOVEQEA
                 
-                *CMP.B   #$3, D4
-                *BEQ     MOVEAMEA
+                CMP.B   #$3, D4
+                BEQ     MOVEMEA
                 
                 CMP.B   #$4, D4
                 BEQ     ADDEA
@@ -1249,8 +1894,8 @@ CHECKEAS        CMP.B   #$1, D4
                 CMP.B   #$5, D4
                 BEQ     ADDAEA
                 
-                *CMP.B   #$6, D4
-                *BEQ     ADDIEA
+                CMP.B   #$6, D4
+                BEQ     ADDIEA
 
                 CMP.B   #$7, D4
                 BEQ     SUBEA
@@ -1282,15 +1927,31 @@ CHECKEAS        CMP.B   #$1, D4
                 CMP.B   #$19, D4
                 BEQ     CMPEA
                 
-                *CMP.B   #$21, D4
-                *BEQ     BCCEA
+                CMP.B   #$21, D4
+                BEQ     BCCEA
                 
                 CMP.B   #$22, D4
                 BEQ     JSREA
                 
+                CMP.B   #$23, D4
+                BEQ     RTSEA
                 
+                CMP.B   #$25, D4
+                BEQ     LSMEA
+                
+                CMP.B   #$26, D4
+                BEQ     ASMEA
+                
+                CMP.B   #$27, D4
+                BEQ     ROMEA
                 
 
+
+NOPEA       MOVE.B  #-1, D5
+            RTS
+            
+RTSEA       MOVE.B  #-1, D5
+            RTS
 
 MOVEEA      MOVE.L  D0, D1
             AND.L   #$38, D1    *Isolate source mode
@@ -1312,6 +1973,8 @@ MOVEEA      MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     MOVEADDRESSDATA
+            
+            BRA     INVALIDOPCODE
             
 MOVEDATAREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -1360,6 +2023,8 @@ MOVEADDRESSDATA MOVE.L  D0, D1
             CMP.L   #$4, D1     *Check if 100
             BEQ     MOVEDATA
             
+            BRA     INVALIDOPCODE
+            
 MOVEADDRW   MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -1381,9 +2046,9 @@ MOVEDATA    CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     MOVESIZEL 
 
-MOVESIZEB   MOVE.B  (A0),D2 
+MOVESIZEB   MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.L  #$2, A0 *<---------------------------------------------------
+            ADDA.L  #$2, A0 
         
             BRA     MOVEDEST    *Branches to destination
 
@@ -1410,11 +2075,13 @@ MOVEDEST    MOVE.W  D0, D1
             CMP.W   #$18, D1 *Checks (An)+
             BEQ     MOVEPOSTADDRD
         
-            CMP.W   #$100, D1 *Checks -(An)
+            CMP.W   #$20, D1 *Checks -(An)
             BEQ     MOVEPREADDRD
         
             CMP.W   #$1C0, D1 *Checks Addressing Mode
             BEQ     MOVEADDRD
+            
+            BRA     INVALIDOPCODE
             
 MOVEDATAREGD    MOVE.W  D0, D1
                 AND.W   #$E00, D1   *Isolate register
@@ -1461,6 +2128,8 @@ MOVEADDRD       MOVE.W  D0, D1
                 CMP.W   #$200, D1     *Check if 001
                 BEQ     MOVEADDRLD  
                 
+                BRA     INVALIDOPCODE
+                
 MOVEADDRWD      MOVE.W  (A0), D3
                 MOVE.B  #$6, D6
                 ADDA.L  #$2, A0
@@ -1494,6 +2163,189 @@ MOVEQEA         MOVE.L  D0, D1
                 RTS
                 
                 
+                
+registers       DS.L    16
+                
+MOVEMEA         MOVE.L  D0, D1
+                AND.W   #$400, D1       *Isolate dr field 
+                
+                CMP.W   #$400, D1       *Check if it's 1
+                BEQ     MOVEMMR
+                
+                BRA     MOVEMRM
+                
+MOVEMRM         MOVE.W  (A0), D2
+                ADDA.L  #$2, A0
+                LEA     registers, A2   *Store array
+                MOVE.L  #$10, D5
+                MOVE.L  #$0, D6     *Counter
+MOVEMRLOOP      MOVE.W  D2, D1      *For editing
+                AND.W   #$1, D1
+                
+                CMP.W   #$1, D1
+                BNE     MOVEMNOONES
+                
+                MOVE.B  #$1, (A2, D6)   *Insert 1 to array
+                ADD.W   #1, D6
+                ASR.W   #$1, D2     *Shift to right
+                
+                CMP.W   #16, D6
+                BNE     MOVEMRLOOP
+                
+                BRA     MOVEMMDEST
+                
+MOVEMNOONES     MOVE.B  #$0, (A2, D6)
+                ADD.W  #1, D6     *Add counter
+                ASR.W   #$1, D2     *Shift to right
+                
+                CMP.W   #16, D6
+                BNE     MOVEMRLOOP
+                
+                BRA     MOVEMMDEST
+                
+MOVEMMDEST      CLR     D6
+                MOVE.L  D0, D1
+                AND.L   #$38, D1    *Isolate source mode
+            
+                CMP.L   #$10, D1    *Check if 010
+                BEQ     MOVEMINADDRREGD
+                
+                CMP.W   #$20, D1 *Checks -(An)
+                BEQ     MOVEMPREADDRD
+            
+                CMP.L   #$38, D1     *Check if 111
+                BEQ     MOVEMADDRESSD
+                
+                BRA     INVALIDOPCODE
+                
+MOVEMINADDRREGD MOVE.L  D0, D1
+                AND.L   #$7, D1     *Isolate register
+                MOVE.L  D1, D3      *Move value of an
+                MOVE.B  #$3, D6     *Move type of dest
+            
+                RTS
+                
+MOVEMPREADDRD   MOVE.L  D0, D1
+                AND.L   #$7, D1     *Isolate register
+                MOVE.L  D1, D3      *Move value of an
+                MOVE.B  #$5, D6     *Move type of dest
+                MOVE.L  #$11, D5    *flip mask
+            
+                RTS
+            
+MOVEMADDRESSD   MOVE.L  D0, D1
+                AND.L   #$7, D1     *Isolate register
+            
+                CMP.L   #$0, D1     *Check if 000
+                BEQ     MOVEMADDRWD
+            
+                CMP.L   #$1, D1     *Check if 001
+                BEQ     MOVEMADDRLD
+                
+                BRA     INVALIDOPCODE
+            
+MOVEMADDRWD     MOVE.W  (A0),D3     *Move addr
+                MOVE.B  #$6, D6     *Store type
+                ADDA.L  #$2, A0 
+            
+                RTS
+
+MOVEMADDRLD     MOVE.L  (A0),D3     *Move addr
+                MOVE.B  #$7, D6     *Store type
+                ADDA.L  #$4, A0
+            
+                RTS
+                
+                
+                
+     
+MOVEMMR         MOVE.W  (A0), D3
+                ADDA.L  #$2, A0
+                LEA     registers, A2   *Store array
+                MOVE.L  #$10, D6
+                MOVE.L  #$0, D5     *Counter
+MOVEMRLOOPD     MOVE.W  D3, D1      *For editing
+                AND.W   #$1, D1
+                
+                CMP.W   #$1, D1
+                BNE     MOVEMNOONE
+                
+                MOVE.B  #$1, (A2, D5)   *Insert 1 to array
+                ADD.W   #1, D5
+                ASR.W   #$1, D3     *Shift to right
+                
+                CMP.W   #16, D5
+                BNE     MOVEMRLOOPD
+                
+                BRA     MOVEMRDEST
+                
+MOVEMNOONE      MOVE.B  #$0, (A2, D5)
+                ADD.W  #1, D5     *Add counter
+                ASR.W   #$1, D3     *Shift to right
+                
+                CMP.W   #16, D5
+                BNE     MOVEMRLOOPD
+                
+                BRA     MOVEMRDEST
+                
+MOVEMRDEST      MOVE.L  D0, D1
+                AND.L   #$38, D1    *Isolate source mode
+            
+                CMP.L   #$10, D1    *Check if 010
+                BEQ     MOVEMINADDRREG
+                
+                CMP.L   #$18, D1    *Check if 011
+                BEQ     MOVEMPLUSADDRREG
+            
+                CMP.L   #$38, D1     *Check if 111
+                BEQ     MOVEMADDRESS
+                
+                BRA     INVALIDOPCODE
+            
+MOVEMINADDRREG  MOVE.L  D0, D1
+                AND.L   #$7, D1     *Isolate register
+                MOVE.L  D1, D2      *Move value of an
+                MOVE.B  #$3, D5     *Move type of source
+            
+                RTS 
+                
+MOVEMPLUSADDRREG MOVE.L  D0, D1
+                AND.L   #$7, D1     *Isolate register
+                MOVE.L  D1, D2      *Move value of an
+                MOVE.B  #$4, D5     *Move type of source
+            
+                RTS
+            
+MOVEMADDRESS    MOVE.L  D0, D1
+                AND.L   #$7, D1     *Isolate register
+            
+                CMP.L   #$0, D1     *Check if 000
+                BEQ     MOVEMADDRW
+            
+                CMP.L   #$1, D1     *Check if 001
+                BEQ     MOVEMADDRL
+                
+                RTS
+            
+MOVEMADDRW      MOVE.W  (A0),D2     *Move addr
+                MOVE.B  #$6, D5     *Store type
+                ADDA.L  #$2, A0 
+            
+                RTS
+
+MOVEMADDRL      MOVE.L  (A0),D2     *Move addr
+                MOVE.B  #$7, D5     *Store type
+                ADDA.L  #$4, A0
+            
+                RTS
+
+                
+                
+                
+                
+                
+
+               
                 
                 
                 
@@ -1531,6 +2383,8 @@ ADDDNEADEST     MOVE.L  D0, D1
                 CMP.L   #$38, D1     *Check if 111
                 BEQ     ADDADDRESSD
                 
+                BRA     INVALIDOPCODE
+                
             
 ADDINADDRREGD MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -1561,6 +2415,8 @@ ADDADDRESSD MOVE.L  D0, D1
             
             CMP.L   #$1, D1     *Check if 001
             BEQ     ADDADDRLD
+            
+            BRA     INVALIDOPCODE
             
 ADDADDRWD   MOVE.W  (A0),D3     *Move addr
             MOVE.B  #$6, D6     *Store type
@@ -1594,6 +2450,8 @@ ADDEADN     MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     ADDADDRESSDATA
+            
+            BRA     INVALIDOPCODE
                 
 ADDDATAREG  MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -1642,6 +2500,8 @@ ADDADDRESSDATA MOVE.L  D0, D1
             CMP.L   #$4, D1     *Check if 100
             BEQ     ADDDATA
             
+            BRA     INVALIDOPCODE
+            
 ADDADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -1663,9 +2523,9 @@ ADDDATA     CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     ADDSIZEL 
 
-ADDSIZEB    MOVE.B  (A0),D2 
+ADDSIZEB    MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.L  #$1, A0 
+            ADDA.L  #$2, A0 
         
             BRA     ADDDNDEST *Branches to destination
 
@@ -1715,6 +2575,8 @@ ADDAEA      MOVE.L  D0, D1
             CMP.L   #$38, D1     *Check if 111
             BEQ     ADDAADDRESSDATA
             
+            BRA     INVALIDOPCODE
+            
 ADDADATAREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
             MOVE.L  D1, D2      *Move value of Dn
@@ -1762,6 +2624,8 @@ ADDAADDRESSDATA MOVE.L  D0, D1
             CMP.L   #$4, D1     *Check if 100
             BEQ     ADDADATA
             
+            BRA     INVALIDOPCODE
+            
 ADDAADDRW   MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -1783,9 +2647,9 @@ ADDADATA    CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     ADDASIZEL 
 
-ADDASIZEB   MOVE.B  (A0),D2 
+ADDASIZEB   MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.L  #$1, A0 
+            ADDA.L  #$2, A0 
         
             BRA     ADDADEST *Branches to destination
 
@@ -1811,9 +2675,106 @@ ADDADEST    MOVE.W  D0, D1
             RTS
             
             
-*ADDIEA      
+ADDIEA      CMP.B   #$1,D7     *Compare if the size is a byte  
+            BEQ     ADDISIZEB
+    
+            CMP.B   #$2,D7     *Compare if the size is a word 
+            BEQ     ADDISIZEW
+    
+            CMP.B   #$3,D7     *Compare if the size is a long 
+            BEQ     ADDISIZEL 
+
+ADDISIZEB   MOVE.W  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$2, A0 
+        
+            BRA     ADDIDEST *Branches to destination
+
+ADDISIZEW   MOVE.W  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$2, A0 
+        
+            BRA     ADDIDEST *Branches to destination
+
+ADDISIZEL   MOVE.L  (A0),D2 
+            MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
+            ADDA.L  #$4, A0
             
+            BRA     ADDIDEST
             
+ADDIDEST    MOVE.L  D0, D1
+            AND.L   #$38, D1    *Isolate source mode
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     ADDIDATAREG
+            
+            CMP.L   #$10, D1    *Check if 010
+            BEQ     ADDIINADDRREG
+            
+            CMP.L   #$18, D1    *Check if 011
+            BEQ     ADDIPLUSADDRREG
+            
+            CMP.L   #$20, D1    *Check if 100
+            BEQ     ADDIMINUSADDRREG
+            
+            CMP.L   #$38, D1     *Check if 111
+            BEQ     ADDIADDRESS
+            
+            BRA     INVALIDOPCODE
+            
+ADDIDATAREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of Dn
+            MOVE.B  #$0, D5     *Move type of source
+            
+            RTS
+            
+ADDIINADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$3, D5     *Move type of source
+            
+            RTS
+            
+ADDIPLUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$4, D5     *Move type of source
+            
+            RTS
+            
+ADDIMINUSADDRREG MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            MOVE.L  D1, D2      *Move value of an
+            MOVE.B  #$5, D5     *Move type of source
+            
+            RTS
+            
+ADDIADDRESS MOVE.L  D0, D1
+            AND.L   #$7, D1     *Isolate register
+            
+            CMP.L   #$0, D1     *Check if 000
+            BEQ     ADDIADDRW
+            
+            CMP.L   #$1, D1     *Check if 001
+            BEQ     ADDIADDRL
+            
+            BRA     INVALIDOPCODE
+            
+ADDIADDRW   MOVE.W  (A0),D2     *Move addr
+            MOVE.B  #$6, D5     *Store type
+            ADDA.L  #$2, A0 
+            
+            RTS
+
+ADDIADDRL   MOVE.L  (A0),D2     *Move addr
+            MOVE.B  #$7, D5     *Store type
+            ADDA.L  #$4, A0 
+            
+            RTS
+
+
+
             
             
 SUBEA           MOVE.W  D0, D1
@@ -1848,6 +2809,8 @@ SUBEADEST       MOVE.L  D0, D1
                 CMP.L   #$38, D1     *Check if 111
                 BEQ     SUBADDRESSD
                 
+                BRA     INVALIDOPCODE
+                
             
 SUBINADDRREGD MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -1878,6 +2841,8 @@ SUBADDRESSD MOVE.L  D0, D1
             
             CMP.L   #$1, D1     *Check if 001
             BEQ     SUBADDRLD
+            
+            BRA     INVALIDOPCODE
             
 SUBADDRWD   MOVE.W  (A0),D3     *Move addr
             MOVE.B  #$6, D6     *Store type
@@ -1911,6 +2876,8 @@ SUBEADN     MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     SUBADDRESSDATA
+            
+            BRA     INVALIDOPCODE
                 
 SUBDATAREG  MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -1959,6 +2926,8 @@ SUBADDRESSDATA MOVE.L  D0, D1
             CMP.L   #$4, D1     *Check if 100
             BEQ     SUBDATA
             
+            BRA     INVALIDOPCODE
+            
 SUBADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -1980,9 +2949,9 @@ SUBDATA     CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     SUBSIZEL 
 
-SUBSIZEB    MOVE.B  (A0),D2 
+SUBSIZEB    MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.L  #$1, A0 
+            ADDA.L  #$2, A0 
         
             BRA     SUBDNDEST *Branches to destination
 
@@ -2026,6 +2995,8 @@ MULSEA      MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     MULSADDRESSDATA
+            
+            BRA     INVALIDOPCODE
                 
 MULSDATAREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2067,6 +3038,8 @@ MULSADDRESSDATA MOVE.L  D0, D1
             CMP.L   #$4, D1     *Check if 100
             BEQ     MULSDATA
             
+            BRA     INVALIDOPCODE
+            
 MULSADDRW   MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -2088,9 +3061,9 @@ MULSDATA    CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     MULSSIZEL 
 
-MULSSIZEB   MOVE.B  (A0),D2 
+MULSSIZEB   MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.L  #$1, A0 
+            ADDA.L  #$2, A0 
         
             BRA     MULSDEST *Branches to destination
 
@@ -2135,6 +3108,8 @@ DIVUEA      MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     DIVUADDRESSDATA
+            
+            BRA     INVALIDOPCODE
                 
 DIVUDATAREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2176,6 +3151,8 @@ DIVUADDRESSDATA MOVE.L  D0, D1
             CMP.L   #$4, D1     *Check if 100
             BEQ     DIVUDATA
             
+            BRA     INVALIDOPCODE
+            
 DIVUADDRW   MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -2197,9 +3174,9 @@ DIVUDATA    CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     DIVUSIZEL 
 
-DIVUSIZEB   MOVE.B  (A0),D2 
+DIVUSIZEB   MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.L  #$1, A0 
+            ADDA.L  #$2, A0 
         
             BRA     DIVUDEST *Branches to destination
 
@@ -2234,6 +3211,8 @@ LEAEA       MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     LEAADDRESS
+            
+            BRA     INVALIDOPCODE
             
 LEAINADDRREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2274,7 +3253,8 @@ LEADEST     MOVE.W  D0, D1
             
             
             
-CLREA       MOVE.L  D0, D1
+CLREA       MOVE.L  #-1, D6
+            MOVE.L  D0, D1
             AND.L   #$38, D1    *Isolate source mode
             
             CMP.L   #$0, D1     *Check if 000
@@ -2291,6 +3271,8 @@ CLREA       MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     CLRADDRESS            
+            
+            BRA     INVALIDOPCODE
 
 CLRDATAREG  MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2328,6 +3310,8 @@ CLRADDRESS  MOVE.L  D0, D1
             
             CMP.L   #$1, D1     *Check if 001
             BEQ     DIVUADDRL
+            
+            BRA     INVALIDOPCODE
             
 CLRADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
@@ -2376,6 +3360,8 @@ ANDEADEST       MOVE.L  D0, D1
                 CMP.L   #$38, D1     *Check if 111
                 BEQ     ANDADDRESSD
                 
+                BRA     INVALIDOPCODE
+                
             
 ANDINADDRREGD MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2407,6 +3393,8 @@ ANDADDRESSD MOVE.L  D0, D1
             CMP.L   #$1, D1     *Check if 001
             BEQ     ANDADDRLD
             
+            BRA     INVALIDOPCODE
+            
 ANDADDRWD   MOVE.W  (A0),D3     *Move addr
             MOVE.B  #$6, D6     *Store type
             ADDA.L  #$2, A0 
@@ -2436,6 +3424,8 @@ ANDEADN     MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     ANDADDRESSDATA
+            
+            BRA     INVALIDOPCODE
                 
 ANDDATAREG  MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2477,6 +3467,8 @@ ANDADDRESSDATA MOVE.L  D0, D1
             CMP.L   #$4, D1     *Check if 100
             BEQ     ANDDATA
             
+            BRA     INVALIDOPCODE
+            
 ANDADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -2498,9 +3490,9 @@ ANDDATA     CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     ANDSIZEL 
 
-ANDSIZEB    MOVE.B  (A0),D2 
+ANDSIZEB    MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
-            ADDA.L  #$1, A0 
+            ADDA.L  #$2, A0 
         
             BRA     ANDDNDEST *Branches to destination
 
@@ -2560,7 +3552,8 @@ LSRDEST     MOVE.W  D0, D1
             
             RTS
             
-LSMEA       MOVE.L  D0, D1
+LSMEA       MOVE.L  #-1, D6
+            MOVE.L  D0, D1
             AND.L   #$38, D1    *Isolate source mode
             
             CMP.L   #$10, D1    *Check if 010
@@ -2574,6 +3567,8 @@ LSMEA       MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     LSMADDRESS
+            
+            BRA     INVALIDOPCODE
             
 LSMINADDRREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2604,6 +3599,8 @@ LSMADDRESS  MOVE.L  D0, D1
             
             CMP.L   #$1, D1     *Check if 001
             BEQ     LSMADDRL
+            
+            BRA     INVALIDOPCODE
             
 LSMADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
@@ -2652,7 +3649,8 @@ ASRDEST     MOVE.W  D0, D1
             
             RTS
             
-ASMEA       MOVE.L  D0, D1
+ASMEA       MOVE.L  #-1, D6
+            MOVE.L  D0, D1
             AND.L   #$38, D1    *Isolate source mode
             
             CMP.L   #$10, D1    *Check if 010
@@ -2666,6 +3664,8 @@ ASMEA       MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     ASMADDRESS
+            
+            BRA     INVALIDOPCODE
             
 ASMINADDRREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2696,6 +3696,8 @@ ASMADDRESS  MOVE.L  D0, D1
             
             CMP.L   #$1, D1     *Check if 001
             BEQ     LSMADDRL
+            
+            BRA     INVALIDOPCODE
             
 ASMADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
@@ -2745,7 +3747,8 @@ RORDEST     MOVE.W  D0, D1
             
             RTS
             
-ROMEA       MOVE.L  D0, D1
+ROMEA       MOVE.L  #-1, D6
+            MOVE.L  D0, D1
             AND.L   #$38, D1    *Isolate source mode
             
             CMP.L   #$10, D1    *Check if 010
@@ -2759,6 +3762,8 @@ ROMEA       MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     ROMADDRESS
+            
+            BRA     INVALIDOPCODE
             
 ROMINADDRREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2789,6 +3794,8 @@ ROMADDRESS  MOVE.L  D0, D1
             
             CMP.L   #$1, D1     *Check if 001
             BEQ     ROMADDRL
+            
+            BRA     INVALIDOPCODE
             
 ROMADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
@@ -2825,6 +3832,8 @@ CMPEA       MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     CMPADDRESSDATA
+            
+            BRA     INVALIDOPCODE
                 
 CMPDATAREG  MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2873,6 +3882,8 @@ CMPADDRESSDATA MOVE.L  D0, D1
             CMP.L   #$4, D1     *Check if 100
             BEQ     CMPDATA
             
+            BRA     INVALIDOPCODE
+            
 CMPADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -2894,19 +3905,19 @@ CMPDATA     CMP.B   #$1,D7     *Compare if the size is a byte
             CMP.B   #$3,D7     *Compare if the size is a long 
             BEQ     CMPSIZEL 
 
-CMPSIZEB    MOVE.B  (A0),D2 
+CMPSIZEB    MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.L  #$2, A0 
         
             BRA     CMPDNDEST *Branches to destination
 
-CMPSIZEW    MOVE.B  (A0),D2 
+CMPSIZEW    MOVE.W  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.L  #$2, A0 
         
             BRA     CMPDNDEST *Branches to destination
 
-CMPSIZEL    MOVE.B  (A0),D2 
+CMPSIZEL    MOVE.L  (A0),D2 
             MOVE.B  #$8, D5 *Stores the type of source as Data into D5 
             ADDA.L  #$4, A0 
         
@@ -2923,7 +3934,91 @@ CMPDNDEST   MOVE.W  D0, D1
             
             
             
+            
+BCCEA       MOVE.L  #-1, D6
+            MOVE.W  D0, D1
+            AND.W   #$FF, D1    *Isolate first byte
+            
+            CMP.W   #$0, D1
+            BEQ     BCCW
+            
+            CMP.W   #$FF, D1
+            BEQ     BCCL
+            
+            AND.W   #$80, D1    *Isolate first bit
+            CMP.W   #$80, D1
+            BEQ     BCCBS       *If negative, need further manipulation
+            
+            MOVE.W  D0, D1
+            AND.W   #$FF, D1
+            SUB.B   #$2, D1     *Subtract 2
+            MOVE.W  A6, D5      *Move address
+            SUB.W   D1, D5      *Add from address
+            MOVE.W  D5, D1
+            MOVE.W  D1, D2
+            MOVE.L  #$6, D5  
+            
+            RTS
+            
+BCCBS       MOVE.W  D0, D1
+            AND.W   #$FF, D1
+            SUB.B   #$1, D1     *Subtract 1
+            NOT.B   D1          *Flip all bits
+            SUB.B   #$2, D1     *Subtract 2
+            MOVE.W  A6, D5      *Move address
+            SUB.W   D1, D5      *Add from address
+            MOVE.W  D5, D1
+            MOVE.W  D1, D2
+            MOVE.L  #$6, D5  
+            
+            RTS
+            
+BCCWS       SUB.W   #$1, D1     *Subtract 1
+            NOT.W   D1          *Flip all bits
+            SUB.W   #$2, D1     *Subtract 2
+            MOVE.W  A6, D5      *Move address
+            SUB.W   D1, D5      *Add from address
+            MOVE.W  D5, D1
+            MOVE.W  D1, D2
+            MOVE.L  #$6, D5  
+            
+            RTS
+            
+BCCW        MOVE.W  (A0), D1
+            ADDA.L  #$2, A0
+            CMP.W   #0, D1
+            BLT     BCCWS       *If negative, need further manipulation
+            
+            ADD.B   #$2, D1     *Subtract 2
+            MOVE.W  A6, D5      *Move address
+            ADD.W   D5, D1      *Add from address
+            MOVE.W  D1, D2
+            MOVE.L  #$6, D5 
+            
+            RTS
+   
+BCCL        MOVE.L  (A0), D2
+            ADDA.L  #$4, A0
+            CMP.L   #0, D1
+            BLT     BCCLS       *If negative, need further manipulation
+            
+            MOVE.L  D1, D2
+            ADD.L   #$2, D2
+            MOVE.B  #$8, D5
+            
+            RTS
+                 
+BCCLS       SUB.L   #$1, D1     *Subtract 1
+            NOT.L   D1          *Flip all bits
+            ADD.L   #$2, D1     *Add 2
+            MOVE.L  D1, D2
+            MOVE.B  #$8, D5  
+            
+            RTS
+            
+            
 JSREA       MOVE.L  D0, D1
+            MOVE.B  #-1, D6
             AND.L   #$38, D1    *Isolate source mode
 
             CMP.L   #$10, D1    *Check if 010
@@ -2931,6 +4026,8 @@ JSREA       MOVE.L  D0, D1
             
             CMP.L   #$38, D1     *Check if 111
             BEQ     JSRADDRESS
+            
+            BRA     INVALIDOPCODE
             
 JSRINADDRREG MOVE.L  D0, D1
             AND.L   #$7, D1     *Isolate register
@@ -2948,6 +4045,8 @@ JSRADDRESS  MOVE.L  D0, D1
             CMP.L   #$1, D1     *Check if 001
             BEQ     JSRADDRL
             
+            BRA     INVALIDOPCODE
+            
 JSRADDRW    MOVE.W  (A0),D2     *Move addr
             MOVE.B  #$6, D5     *Store type
             ADDA.L  #$2, A0 
@@ -2960,14 +4059,15 @@ JSRADDRL    MOVE.L  (A0),D2     *Move addr
             
             RTS
 
-
                 
 
 EMPTYLINEMESSAGE DC.B   '', 0
 NEWLINE         DC.B    $0D,$0A,0
-DIVSMESSAGE     DC.B    'DIVS', 0
+DIVSMESSAGE     DC.B    'DIVU', 0
 CMPMESSAGE      DC.B     'CMP', 0
 BCCMESSAGE      DC.B     'BCC', 0
+BGTMESSAGE      DC.B     'BGT', 0
+BLEMESSAGE      DC.B     'BLE', 0
 MOVEQMESSAGE    DC.B   'MOVEQ', 0
 ADDAMESSAGE     DC.B    'ADDA', 0
 ADDMESSAGE      DC.B     'ADD', 0
@@ -2997,14 +4097,19 @@ BYTEMESSAGE     DC.B    '.B', 0
 WORDMESSAGE     DC.B    '.W', 0
 LONGMESSAGE     DC.B    '.L', 0
 
-INPUTMESSAGE    DC.B    'Welcome to JAN disassembler. Please type your addresses in this format:',$0D,$0A, 0
+INPUTMESSAGE    DC.B    'Welcome to JAN disassembler. Please type your addresses in this format:', $0D,$0A,0
+INPUTMESSAGE1   DC.B    '"starting address","ending address". (period included)', 0
 
-INPUTMESSAGE2   DC.B    '"starting address", "ending address". (period included)',0
-
-
-*INPUTMESSAGE2   DC.B    'Now please type your ending address in hex format. Write a . (period) when done.', 0
+CONTINUEMESSAGE DC.B    'Section ended. Press ENTER to continue?', 0
+ENDMESSAGE      DC.B    'All done!! Thank you for using JAN disassembler. Continue? (y/n)'
 
 SPACEMESSAGE    DC.B    '           ', 0
+COMMAMESSAGE    DC.B    ', ', 0
+SLASHMESSAGE    DC.B    '/', 0
+
+INVALIDMESSAGE  DC.B    'DATA', 0
+DOLLARMESSAGE   DC.B    '$', 0
+POUNDMESSAGE    DC.B    '#', 0
 
 ZEROMESSAGE     DC.B    '0', 0
 ONEMESSAGE      DC.B    '1', 0
@@ -3028,7 +4133,7 @@ ANMESSAGE       DC.B    'A', 0
 ANIOPENMESSAGE  DC.B    '(A', 0
 ANICLOSEMESSAGE DC.B    ')', 0
 ANPLUSCLOSEMESSAGE DC.B ')+', 0
-ANMINUSOPENMESSAGE DC.B '-(', 0
+ANMINUSOPENMESSAGE DC.B '-(A', 0
 
     END    START        ; last line of source
    
@@ -3065,7 +4170,19 @@ ANMINUSOPENMESSAGE DC.B '-(', 0
 
 
 
+
+
+
+
+
+
+
 *~Font name~Courier New~
 *~Font size~10~
 *~Tab type~1~
-*~Tab size~4~
+*~Tab size~20~
+
+
+
+
+
